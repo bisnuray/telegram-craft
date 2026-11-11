@@ -1,0 +1,119 @@
+{
+  "_note": "Written before any eval output was inspected. Each assertion states a platform or engineering outcome and does not reward using the skill's own tools or wording.",
+  "utility-bot": [
+    "Tests exist in the project",
+    "Every callback handler answers the callback query on every path, including invalid data",
+    "Choosing a tip edits the existing message instead of sending a new message for each tap",
+    "In group chats, tip buttons are bound to the requester, or the code explicitly handles another user tapping them",
+    "Money is calculated with Decimal or integer minor units, not binary floats",
+    "Invalid input (non-numeric amount, zero or negative people) receives a specific message saying what to send",
+    "Group use accounts for privacy mode: a command form such as /split works in groups, or the docs state the privacy-mode requirement",
+    "The token comes from the environment and is not hard-coded"
+  ],
+  "start-interface": [
+    "screens.json holds a Bot API payload with text and reply_markup for each designed screen",
+    "New-user and returning-user screens are different, and the returning screen shows user state such as streak or today's quiz status",
+    "The new-user message is at most 400 visible characters and has one clear first action",
+    "Referral handling covers an invalid payload and self-referral",
+    "A referral reward is not granted merely on opening the link; it needs a server-checked qualifying event",
+    "The Pro upgrade uses Telegram Stars or states that digital goods must be sold in Stars",
+    "The reminder screen or button shows the current reminder time",
+    "Message copy avoids decorative dividers, all-caps lines, and emoji at the start of most lines"
+  ],
+  "redesign-messages": [
+    "bot.py still compiles",
+    "All original callback_data values and prefixes are unchanged (courses, support, course:, enroll:)",
+    "Every fact is preserved: $49, $129, 12 and 24 lessons, 14-day refund, 24-hour operator contact, Mon-Fri 9:00-18:00, support@example.com",
+    "Copy contains no decorative dividers, all-caps sentences, or repeated exclamation marks",
+    "The first name is no longer upper-cased and shouted; if parse_mode is used it is escaped",
+    "The fallback error tells the user what to do next instead of a generic failure",
+    "The 'OK' enroll button is replaced by a label naming the action",
+    "No new commands or business features were added"
+  ],
+  "keyboard-navigation": [
+    "Tests exist in the project",
+    "The task list is paginated with no more than about 10 task buttons per page",
+    "Navigation edits the existing message instead of sending a new one",
+    "Back from a task returns to the same page of the list",
+    "Deleting needs an explicit confirmation naming the task, with labels other than Yes and No",
+    "Ownership is enforced on opening, completing, and deleting tasks",
+    "A non-owner's tap receives a refusal through the callback answer",
+    "A stale or deleted task is handled without an exception and the callback is answered"
+  ],
+  "media-bot": [
+    "Tests exist in the project",
+    "FFmpeg runs from an argument list without a shell",
+    "File size is checked before download against the 20 MB Bot API download limit",
+    "Conversions have a global concurrency limit suitable for 2 cores",
+    "A conversion timeout terminates the FFmpeg process",
+    "Temporary files are removed in a finally block or context manager on failure too",
+    "Progress is shown by editing one status message or chat actions, not by a stream of new messages",
+    "The output is sent with sendVoice as OGG/Opus",
+    "User-supplied filenames are not used as filesystem paths",
+    "FFmpeg input is restricted against protocol or playlist abuse, for example with a protocol whitelist",
+    "There is a per-user limit on concurrent or queued jobs"
+  ],
+  "subscription-bot": [
+    "Tests exist in the project",
+    "Payment uses Telegram Stars: currency XTR with an empty provider token",
+    "Recurring billing uses createInvoiceLink with subscription_period 2592000, not a manually re-sent invoice",
+    "Access is granted only from successful_payment, not at pre-checkout",
+    "Payments are deduplicated on telegram_payment_charge_id with a unique constraint or equivalent",
+    "Renewals are handled from is_recurring or subscription_expiration_date and extend access",
+    "Cancellation calls editUserStarSubscription",
+    "/paysupport is implemented",
+    "Refund uses refundStarPayment and revokes access",
+    "Expiry is enforced by stored dates or a scheduled job",
+    "Failed or cancelled renewals are handled through the subscription update or an equivalent expiry path"
+  ],
+  "marketplace-bot": [
+    "Tests exist in the project",
+    "Digital products are paid in Telegram Stars (XTR)",
+    "The invoice payload is an opaque server-side order reference and the price comes from the server",
+    "The product is delivered only after successful_payment",
+    "Payments are deduplicated on telegram_payment_charge_id with a unique constraint",
+    "Delivery can be retried after a crash between payment and delivery",
+    "A license key is reserved atomically so that one key cannot go to two orders",
+    "Admin identity uses numeric IDs from configuration and seller approval is enforced on the server",
+    "Callback actions verify authorization and object ownership on the server",
+    "Stars amounts are integers",
+    "/paysupport and a refund path are implemented",
+    "Pre-checkout re-validates the order, stock, and amount"
+  ],
+  "mini-app": [
+    "Backend tests exist in the project",
+    "The server validates raw initData with the Telegram HMAC algorithm",
+    "The server rejects stale init data by checking auth_date",
+    "Order totals are computed on the server from server prices",
+    "The order's user comes from validated init data, not a request-body field or initDataUnsafe",
+    "No bot token or secret appears in frontend code",
+    "CSS uses Telegram theme variables or themeParams",
+    "Layout accounts for safe-area insets",
+    "Nested screens use the native BackButton and the main action uses MainButton or BottomButton",
+    "Telegram.WebApp.ready() is called",
+    "Loading and error states exist in the frontend",
+    "The project includes a way to preview the app in a normal browser"
+  ],
+  "fix-callbacks": [
+    "Tests exist in the project",
+    "The catch-all callback handler no longer swallows real callbacks",
+    "The out-of-stock path answers the callback with a message",
+    "Buy callback_data stays within 64 bytes for all products, using an ID instead of the name",
+    "Product names are HTML-escaped so 'Кабель <USB-C> & адаптер' renders",
+    "The refresh error from an unmodified message is handled",
+    "Callback queries are answered on error paths, including unknown or invalid product IDs",
+    "Regression tests run updates through the dispatcher rather than only calling functions directly",
+    "Existing Russian user-facing strings are preserved"
+  ],
+  "refactor": [
+    "Tests exist in the project",
+    "Every original user-visible string is unchanged",
+    "The callback format del:<id> is unchanged",
+    "FREE_LIMIT 5, ADMIN 777, and admin bypass behavior are unchanged",
+    "The BOT_TOKEN and DB_PATH environment variables are unchanged",
+    "The database table and column names are unchanged",
+    "Tests compare outgoing Bot API calls or responses through the dispatcher",
+    "Code is split so that handlers are separate from data access",
+    "The run command is unchanged or the new one is documented"
+  ]
+}

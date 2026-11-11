@@ -1,0 +1,9 @@
+aiogram==3.31.0
+python-telegram-bot==22.8
+telethon==1.45.0
+cryptography
+pytest
+pytest-asyncio
+pytest-cov
+pyyaml
+aiosqlite

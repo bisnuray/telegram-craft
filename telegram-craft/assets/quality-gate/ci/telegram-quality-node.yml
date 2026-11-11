@@ -1,0 +1,28 @@
+name: Telegram quality gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  telegram-quality:
+    runs-on: ubuntu-latest
+    env:
+      TG_LINT_REQUIRE_INTERACTIONS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: Tests and Telegram payload gate
+        run: node --test
+      - name: Keep the capture report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-quality-report
+          path: .tg-lint/
+          if-no-files-found: ignore

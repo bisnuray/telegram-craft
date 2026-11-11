@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="533" viewBox="0 0 1600 533" role="img" aria-labelledby="title desc">
+<title id="title">Telegram Craft</title>
+<desc id="desc">Agent Skill for building Telegram bots, Mini Apps, MTProto clients, and Stars integrations.</desc>
+<defs>
+ <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071522"/><stop offset="1" stop-color="#102439"/></linearGradient>
+ <linearGradient id="azure" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#096AA7"/><stop offset="0.54" stop-color="#087FC2"/><stop offset="1" stop-color="#139EDD"/></linearGradient>
+ <linearGradient id="logoBlue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2AABEE"/><stop offset="1" stop-color="#0088CC"/></linearGradient>
+ <linearGradient id="fold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#D6ECFE"/></linearGradient>
+ <filter id="shadow" x="-30%" y="-40%" width="160%" height="180%"><feGaussianBlur stdDeviation="13"/></filter>
+ <clipPath id="canvas"><rect width="1600" height="533"/></clipPath>
+ <style>
+ text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,'Helvetica Neue',Arial,sans-serif}
+ .label{font-size:19px;font-weight:700;letter-spacing:4px;fill:#BBD4E9}
+ .headline{font-size:100px;font-weight:800;letter-spacing:-3px}
+ .sub{font-size:30px;font-weight:400;fill:#B6C7D7}
+ .nav{font-size:23px;font-weight:700;letter-spacing:3.5px;fill:#BBD4E9}
+ .accent{fill:#3EBAF4}
+ </style>
+</defs>
+<g clip-path="url(#canvas)">
+ <rect width="1600" height="533" fill="url(#paper)"/>
+ <path d="M1114 -80H1500L1120 420 948 534H873Z" fill="#153D59" opacity=".55"/>
+ <path d="M1375 -80H1660L1175 555H890Z" fill="url(#azure)"/>
+ <path d="M1490 90 Q1540 69 1608 82V411Q1511 458 1336 500L1059 533H949Z" fill="#0B5C91" opacity=".28"/>
+ <path d="M-45 533 Q95 481 144 533" fill="none" stroke="#18364D" stroke-width="75" opacity=".5"/>
+ <path d="M965 82H1560M965 450H1560" stroke="#4FAFE2" stroke-opacity=".13" stroke-width="1"/>
+ <!-- Telegram Craft mark: chat bubble with an inline keyboard (original, not Telegram's logo) -->
+ <g transform="translate(76 63)">
+  <g transform="scale(0.315)">
+   <rect width="200" height="200" rx="44" fill="url(#logoBlue)"/>
+   <path d="M54 44h92a18 18 0 0 1 18 18v46a18 18 0 0 1-18 18H42a6 6 0 0 1-6-6V62a18 18 0 0 1 18-18z" fill="#FFFFFF"/>
+   <rect x="54" y="66" width="84" height="12" rx="6" fill="#2AABEE" fill-opacity=".45"/>
+   <rect x="54" y="90" width="54" height="12" rx="6" fill="#2AABEE" fill-opacity=".45"/>
+   <rect x="36" y="134" width="62" height="24" rx="8" fill="#FFFFFF" fill-opacity=".92"/>
+   <rect x="102" y="134" width="62" height="24" rx="8" fill="#FFFFFF" fill-opacity=".92"/>
+  </g>
+  <rect x="89" y="12" width="2" height="40" fill="#5CAAD8"/>
+  <text class="label" x="119" y="40">AGENT SKILL  /  TELEGRAM ENGINEERING</text>
+ </g>
+ <!-- One text run, so the gap follows whatever font the viewer has -->
+ <text x="74" y="270" class="headline" fill="#F3F8FC">Telegram <tspan class="accent">Craft</tspan></text>
+ <text x="76" y="347" class="sub">Build bots, Mini Apps and MTProto clients with confidence.</text>
+ <path d="M77 399H952" stroke="#29465B" stroke-width="2"/>
+ <text class="nav" x="77" y="453" xml:space="preserve">BOT API  <tspan class="accent">/</tspan>  MINI APPS  <tspan class="accent">/</tspan>  MTPROTO  <tspan class="accent">/</tspan>  STARS</text>
+ <!-- Decorative paper plane, vector only -->
+ <g transform="translate(1088 128) rotate(-7 239 155)">
+  <path d="M30 161 Q26 149 47 140L459 22Q486 14 475 42L347 350Q339 369 321 358L202 264 153 320Q141 334 136 314L126 242Z" fill="#003D72" opacity=".17" transform="translate(15 19)" filter="url(#shadow)"/>
+  <path d="M32 151 Q27 140 46 134L459 14Q481 7 470 34L346 343Q339 359 322 350L205 255 151 312Q138 327 134 306L126 230Z" fill="#F3FAFF"/>
+  <path d="M126 230 461 22 205 255 151 312 157 250Z" fill="url(#fold)"/>
+  <path d="M157 250 461 22 205 255 151 312Z" fill="#A6DDF9"/>
+  <path d="M205 255 322 350Q339 359 346 343L461 22Z" fill="#F3FAFF"/>
+  <path d="M157 250 205 255 151 312Z" fill="#77C8F1"/>
+ </g>
+</g>
+</svg>

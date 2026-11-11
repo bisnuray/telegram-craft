@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="t">
+  <title id="t">Telegram Craft</title>
+  <g transform="translate(28,28)">
+    <rect width="200.0" height="200.0" rx="44.0" fill="#2AABEE"/>
+    <path d="M54.0 44.0 h92.0 a18.0 18.0 0 0 1 18.0 18.0 v46.0 a18.0 18.0 0 0 1 -18.0 18.0 h-104.0 a6.0 6.0 0 0 1 -6.0 -6.0 v-58.0 a18.0 18.0 0 0 1 18.0 -18.0 z" fill="#FFFFFF"/>
+    <rect x="54.0" y="66.0" width="84.0" height="12.0" rx="6.0" fill="#2AABEE" fill-opacity="0.4"/>
+    <rect x="54.0" y="90.0" width="54.0" height="12.0" rx="6.0" fill="#2AABEE" fill-opacity="0.4"/>
+    <rect x="36.0" y="134.0" width="62.0" height="24.0" rx="8.0" fill="#FFFFFF" fill-opacity="0.9"/>
+    <rect x="102.0" y="134.0" width="62.0" height="24.0" rx="8.0" fill="#FFFFFF" fill-opacity="0.9"/>
+  </g>
+</svg>

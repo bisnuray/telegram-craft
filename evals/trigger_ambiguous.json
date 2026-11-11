@@ -1,0 +1,11 @@
+[
+ {"query":"getting 'message is not modified' in my callback_query handler, how do I stop it","should_trigger":true},
+ {"query":"aiogram FSM forgets the user's state after every restart","should_trigger":true},
+ {"query":"initData hash mismatch on my backend, the token is right","should_trigger":true},
+ {"query":"how do I charge XTR for a download in my bot","should_trigger":true},
+ {"query":"my grammy bot ignores messages in groups","should_trigger":true},
+ {"query":"tg bot keeps logging 409 Conflict since the last deploy","should_trigger":true},
+ {"query":"my discord.py bot's button interaction fails after three seconds","should_trigger":false},
+ {"query":"BOT_TOKEN isn't loading from dotenv in my slack app","should_trigger":false},
+ {"query":"webhook signature check keeps failing for our GitHub app","should_trigger":false}
+]

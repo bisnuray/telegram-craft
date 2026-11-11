@@ -1,0 +1,24 @@
+name: Skill quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements-dev.txt
+      - run: npm install --prefix "$RUNNER_TEMP/node" --no-audit --no-fund grammy@1.46.0
+      - run: python tests/validate_skill.py
+      - name: Tests (sequential)
+        run: pytest -q
+        env:
+          TG_TEST_NODE_MODULES: ${{ runner.temp }}/node/node_modules

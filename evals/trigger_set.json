@@ -1,0 +1,22 @@
+[
+ {"query":"my aiogram bot's inline buttons just spin forever after i tap them, the handler is in handlers/menu.py. can you figure out why","should_trigger":true},
+ {"query":"I want to make a telegram bot that sells access to a private channel for stars every month, python preferably","should_trigger":true},
+ {"query":"getting Bad Request: can't parse entities: Unsupported start tag at byte offset 34 when my grammy bot sends a user's name. fix pls","should_trigger":true},
+ {"query":"build me a telegram mini app for booking haircuts with a node backend. needs to know who the user is","should_trigger":true},
+ {"query":"our /start message in the bot looks like spam, lots of emoji and caps. rewrite it so it feels professional, it's in texts/ru.py","should_trigger":true},
+ {"query":"should I use webhooks or long polling for a python-telegram-bot deployment on one small VPS? also is my Docker setup ok for it","should_trigger":true},
+ {"query":"сделай телеграм-бота который конвертирует видео в кружочки, ffmpeg есть на сервере","should_trigger":true},
+ {"query":"please audit this repo, it's a Telegram bot with a Mini App, before we launch: payments, initData validation, the lot","should_trigger":true},
+ {"query":"can a bot read old messages in a group from before it joined or do i need telethon for that? designing a moderation product","should_trigger":true},
+ {"query":"bot.py for our telegram shop is 2000 lines. split it up without changing what users see","should_trigger":true},
+ {"query":"send a message to my telegram channel @dailyops saying the deploy finished, the token is in my env","should_trigger":false},
+ {"query":"add a step at the end of .github/workflows/deploy.yml that posts to our telegram chat when the build fails, one curl is fine","should_trigger":false},
+ {"query":"read the last 50 messages from my Saved Messages on telegram and summarize them for me","should_trigger":false},
+ {"query":"build a discord bot in python with slash commands that tracks raid attendance and has buttons for sign ups","should_trigger":false},
+ {"query":"create a whatsapp cloud api webhook in fastapi that replies to customers with order status and quick reply buttons","should_trigger":false},
+ {"query":"write a stripe checkout flow for our react web store with webhooks, idempotency and subscriptions, no messenger involved","should_trigger":false},
+ {"query":"I need a Dockerfile and ffmpeg command to transcode uploaded videos to HLS for our website's video player","should_trigger":false},
+ {"query":"design a mobile-first landing page for a coffee shop with dark mode and safe areas, plain html and css, it's just a website","should_trigger":false},
+ {"query":"how do i change my telegram username and turn on two-step verification on my phone","should_trigger":false},
+ {"query":"write 5 engaging posts for our telegram channel about the new product launch, marketing tone, no code","should_trigger":false}
+]

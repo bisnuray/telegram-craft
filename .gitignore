@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Credentials: never commit these
+.env
+.env.*
+!.env.example
+*.session
+*.session-journal
+
+# Internal notes and raw evaluation outputs: kept locally, not published
+_private/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/

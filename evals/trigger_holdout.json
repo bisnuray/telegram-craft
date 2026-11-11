@@ -1,0 +1,16 @@
+[
+ {"query":"the telegraf bot throws 'query is too old' whenever a user taps Confirm, here's the handler, what's going on","should_trigger":true},
+ {"query":"add a Settings button to my telegram bot's main menu, it uses aiogram routers","should_trigger":true},
+ {"query":"i need a telegram bot that lets people pay in stars for a pdf guide","should_trigger":true},
+ {"query":"why does Telegram.WebApp.initDataUnsafe give me the user but my server rejects the hash?","should_trigger":true},
+ {"query":"мой бот в телеграме падает с ошибкой 429 при рассылке, как правильно сделать","should_trigger":true},
+ {"query":"my tg bot sends a new message every time you press a button, make it edit instead","should_trigger":true},
+ {"query":"write a moderation bot for our telegram supergroup that warns then mutes spammers","should_trigger":true},
+ {"query":"webhook for my grammy bot returns 200 but updates arrive twice, is that normal?","should_trigger":true},
+ {"query":"post today's sales summary to the telegram group using this bot token, just once","should_trigger":false},
+ {"query":"export all my telegram contacts to a csv file from my account","should_trigger":false},
+ {"query":"make a slack bot with buttons that approves pull requests","should_trigger":false},
+ {"query":"translate this telegram channel announcement into Spanish and make it punchier","should_trigger":false},
+ {"query":"build a viber chatbot for pizza orders with a menu and payment link","should_trigger":false},
+ {"query":"my celery workers keep running ffmpeg jobs twice for our web uploader, how do I make it idempotent","should_trigger":false}
+]

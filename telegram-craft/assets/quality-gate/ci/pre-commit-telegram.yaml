@@ -1,0 +1,10 @@
+# Merge into .pre-commit-config.yaml. Runs the simulated bot tests before each commit.
+repos:
+  - repo: local
+    hooks:
+      - id: telegram-quality-gate
+        name: Telegram quality gate
+        entry: __TEST_COMMAND__
+        language: system
+        pass_filenames: false
+        always_run: true
