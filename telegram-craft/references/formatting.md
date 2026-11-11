@@ -53,16 +53,18 @@ Text is 1–4096 and captions 0–1024 characters **after** entity parsing. Spli
 
 ## Rich messages (Bot API 10.1+): the default for screens
 
-Bot screens are rich messages by default (`messages.md`). Send with `sendRichMessage` using exactly one of `html`, `markdown`, or `blocks`, and edit in place with `editMessageText` and `rich_message`. They work in private chats, groups, and channels, and accept the usual `reply_markup`.
+Bot screens are rich messages by default; design them with `rich-messages.md` and build them with `assets/rich_html.py`. Send with `sendRichMessage` using exactly one of `html`, `markdown`, or `blocks`, and edit in place with `editMessageText` and `rich_message`. They work in private chats, groups, and channels, and accept the usual `reply_markup`.
 
 Limits: 32,768 characters, 500 blocks, 16 nesting levels, 50 media, 20 table columns. Tag list: `tgdocs.py page bots/api/rich-messages`.
 
 | Stack | Send | Edit |
 |---|---|---|
-| aiogram 3.31+ | `await bot.send_rich_message(chat_id, InputRichMessage(html=html), reply_markup=kb)` | `await bot.edit_message_text(chat_id=..., message_id=..., rich_message=InputRichMessage(html=html), reply_markup=kb)` |
+| aiogram 3.31+ | `await bot.send_rich_message(chat_id, InputRichMessage(html=html), reply_markup=kb)`, or `message.answer_rich(...)` / `reply_rich(...)` | `await message.edit_text(rich_message=InputRichMessage(html=html), reply_markup=kb, parse_mode=None)` |
 | grammY 1.46+ | `await ctx.replyWithRichMessage({ html }, { reply_markup })` | `await ctx.editMessageText({ html }, { reply_markup })` (the first argument takes text or a rich message) |
 | python-telegram-bot 22.8 | `await bot.do_api_request("sendRichMessage", api_kwargs={"chat_id": ..., "rich_message": {"html": html}, "reply_markup": kb.to_dict()})` | `do_api_request("editMessageText", ...)` with `rich_message` |
+| pyTelegramBotAPI (telebot) 4.37.1+ | `bot.send_rich_message(chat_id, types.InputRichMessage(html=html), reply_markup=kb)` (also on `AsyncTeleBot`) | `bot.edit_message_text(chat_id=..., message_id=..., rich_message=..., reply_markup=kb)` |
 | Telethon 1.45 (layer 229) | Raw request, below | `EditMessageRequest(peer, id, rich_message=..., reply_markup=...)` |
+| kurigram 2.2.27+ (layer 233) | `await app.send_rich_message(chat_id, types.InputRichMessage(html=html), reply_markup=kb)` or `message.reply_rich(...)` | `await app.edit_message_text(chat_id, message_id, rich_message=..., reply_markup=kb)` |
 
 ```python
 from telethon.tl.functions.messages import SendMessageRequest
@@ -76,13 +78,44 @@ await client(SendMessageRequest(
 ))
 ```
 
-The MTProto `rich_message` field is in Telethon's schema but not yet in the public MTProto docs, so report it as unverified until a test bot shows the screen (L3). Keep a fallback to `parse_mode="html"` text if the server rejects it. In a hybrid app, prefer running the control bot on a Bot API library (aiogram) where rich messages are documented, and keep Telethon for the user client.
+The MTProto `rich_message` field (`messages.sendMessage` flags.23, and `messages.editMessage`) is in both Telethon's layer 229 and kurigram's layer 233 schemas, but not yet in the public MTProto docs, so report it as unverified until a test bot shows the screen (L3). Keep a fallback to `parse_mode="html"` text if the server rejects it. In a hybrid app, prefer running the control bot on a Bot API library (aiogram) where rich messages are documented, and keep Telethon for the user client.
 
+- **aiogram edits:** `edit_text` and `edit_message_text` send the bot's default `parse_mode` alongside `rich_message` unless you pass `parse_mode=None`. Always pass it on rich edits; the gate warns (`rich-parse-mode`).
+- **Fallback:** see the ladder below.
+- **Where else rich messages work:**
+  - Inline mode, with `InputRichMessageContent`; only previously uploaded files may be used.
+  - Ephemeral messages; edit them with `editEphemeralMessageText(rich_message=…)`.
+  - `editMessageMedia`, which replaces a rich message with media.
+  - Editing an inline message, which cannot upload new files.
+- **Other fields:** `is_rtl` for right-to-left locales, and `media` for files referenced as `tg://photo?id=…` in the HTML.
 - Escape every dynamic value; user text in rich `html` or `markdown` can otherwise create headings, links, and `<tg-button>`s. Use `blocks` when most of the content is dynamic: block text is literal.
 - Set `skip_entity_detection` when showing user-written text.
 - Media in a rich message is a block (`<figure>`, `<tg-collage>`); files come from HTTPS URLs or `tg://photo?id=` links plus the `media` field. Media captions and albums stay regular messages.
 - Callback answers, toasts, and one-line replies inside a flow stay regular messages.
 - Put navigation in `reply_markup`. `<tg-button>` inside the content suits a button tied to one block (a row in a table, a section). The quality gate checks both, but its `press()` taps only `reply_markup` buttons; reach in-content buttons in tests with `callback(data)`.
+
+### When a rich message fails
+
+Classify the failure first; each class has one reaction.
+
+| Failure | Signal | Reaction |
+|---|---|---|
+| Your payload is invalid | 400 parse or validation error, or a `tg_lint` `rich-*` error | Fix the HTML. Never retry it unchanged, and never hide a bug behind a fallback |
+| Rich messages are unsupported | The library has no method (use the raw call in the table), or 400 or MTProto `RICH_MESSAGE_UNSUPPORTED` from the chat or account | Step down the ladder |
+| Rate limit, network, or 5xx | 429 `retry_after`, timeout, 5xx | Wait, then retry the same rich message a bounded number of times (`delivery.md`) |
+| Not allowed | 403, or no right to send media in the chat | Stop for that chat and surface it |
+
+The ladder, one step at a time:
+1. `blocks` or `html` rich message.
+2. The same screen as formatted HTML text (`parse_mode="HTML"`), with the same title, facts, and keyboard.
+3. Plain text, for the error path only.
+
+Rules:
+- Build the fallback from the same screen data, so both versions show the same facts.
+- Log each fallback once with its reason, never the token or the user's text.
+- Never fall back silently for money or legal content. A receipt, invoice, or refund screen that cannot be sent rich is sent as formatted HTML with every amount and reference intact, and the failure is reported.
+
+Tables too wide for a phone: transpose them (attributes as rows) or split them into two tables that share a key column; never drop columns silently. A table over the limits splits across messages between rows, never mid-row, with the header row repeated.
 
 ## Streaming drafts (private chats)
 

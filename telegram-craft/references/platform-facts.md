@@ -88,6 +88,6 @@ Official Markdown lives at `https://core.telegram.org/bots/api/methods/<name-low
 | 10.0 (2026-05-08) | Guest mode; live photos; polls with media and 1+ options; bots can see some bot messages in groups |
 | 9.x | `style` and `icon_custom_emoji_id` on buttons; `sendMessageDraft` |
 
-## Library status (2026-11-10)
+## Library status (2026-11-11)
 
-No library supported 10.4 on 2026-11-10; use a raw API call in one adapter for widgets and the new ephemeral replies. aiogram 3.31.0 → Bot API 10.3. python-telegram-bot 22.8 → 10.0. grammY 1.46.0. Telegraf 4.16.3. Telethon 1.45.0. Pyrogram upstream archived.
+No library supported 10.4 on 2026-11-11; use a raw API call in one adapter for widgets and the new ephemeral replies. aiogram 3.31.0 → Bot API 10.3. python-telegram-bot 22.8 → 10.0. grammY 1.46.0. Telegraf 4.16.3. Telethon 1.45.0 (layer 229). kurigram 2.2.27 (layer 233, Pyrogram fork) has native rich messages. pyTelegramBotAPI 4.37.1 has `send_rich_message`. Pyrogram upstream archived.

@@ -10,7 +10,7 @@ Use when choosing or using a library. Versions were checked on 2026-11-08. Confi
 | Transport | HTTPS | Web page plus JS bridge | Binary protocol |
 | Can | Everything bots are allowed | Rich UI inside Telegram | Client features, history |
 | Cannot | Read chats it isn't in, or history before joining; download over 20 MB on the cloud server | Do anything server-side on its own | Be risk-free: user accounts can be limited or banned |
-| Libraries | aiogram, PTB, grammY, Telegraf | `telegram-web-app.js`, `@tma.js/sdk` | Telethon, TDLib, Pyrogram forks |
+| Libraries | aiogram, PTB, grammY, Telegraf, pyTelegramBotAPI | `telegram-web-app.js`, `@tma.js/sdk` | Telethon, TDLib, Pyrogram forks |
 
 A Telethon session is equal to full account access, so protect it like a password. Do not suggest user accounts for mass messaging, scraping others, or evading limits. For larger files, a local Bot API server is usually better than MTProto.
 
@@ -22,6 +22,7 @@ A Telethon session is equal to full account access, so protect it like a passwor
 | Existing PTB project | Stay on PTB | 22.8 declares 10.0. No rich or ephemeral methods; use `do_api_request` in one adapter. |
 | New TypeScript bot | grammY | 1.46.0; plugin ecosystem; runs on serverless |
 | Existing Telegraf project | Stay on Telegraf | 4.16.3; maintained but slower to add API |
+| Existing pyTelegramBotAPI (telebot) project | Stay on telebot | 4.37.1 has `send_rich_message` and `edit_message_text(rich_message=...)`, sync and async. The quality gate has no telebot adapter: capture payloads in tests with `telebot.apihelper.CUSTOM_REQUEST_SENDER` and check them with `tg_lint.py` |
 | Mini App | Plain script for simple apps; `@tma.js/sdk` 3.x for larger ones | `@twa-dev/sdk` and `@telegram-apps/sdk` have no recent releases |
 | Authorized user-account work, MTProto bots | Telethon 1.45 | See `mtproto-foundations.md`. Upstream Pyrogram's repository is archived. |
 

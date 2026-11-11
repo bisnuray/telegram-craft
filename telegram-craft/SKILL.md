@@ -3,9 +3,9 @@ name: telegram-craft
 description: "Engineer production-quality Telegram bots, Mini Apps, and MTProto clients: message copy and /start flows, inline keyboards and navigation, handlers, callbacks and FSM state, webhooks, Telegram Stars payments and subscriptions, media and file processing, moderation, and initData auth, in aiogram, python-telegram-bot, grammY, Telegraf, or the raw Bot API, and Telethon or Pyrogram user clients and bot sessions (sessions, FloodWait, large files). Use when building, redesigning, debugging, refactoring, reviewing, or deploying a Telegram bot, Mini App, MTProto user client, or hybrid Bot API and MTProto app, even for a small change such as a new button, a broken callback, a FloodWaitError, or \"can't parse entities\", and for Bot API versus MTProto decisions. Russian: телеграм-бот, мини-апп, инлайн-кнопки, оплата звёздами. Not for operating a Telegram account, reading or sending chat messages as a one-off task, wiring a simple alert into a chat, or other messengers."
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   bot-api-snapshot: "10.4"
-  verified: "2026-11-10"
+  verified: "2026-11-11"
 ---
 
 # Telegram Craft
@@ -21,10 +21,10 @@ Match the process to the request. Build what was asked, and list recommended ext
 | Job | Approach | Start with |
 |---|---|---|
 | Question or one-line fix | Answer or patch. Check the one contract involved. | `platform-facts.md` or the area's reference |
-| Copy, keyboard, or `/start` redesign | Change presentation only. Keep `callback_data`, routes, facts, and locale keys. Add or run the quality gate (`quality-gate.md`). | `messages.md`, `keyboards.md` |
+| Copy, keyboard, or `/start` redesign | Change presentation only. Keep `callback_data`, routes, facts, and locale keys. Add or run the quality gate (`quality-gate.md`). | `messages.md`, `rich-messages.md`, `keyboards.md` |
 | Bug or feature in an existing project | Read the code, reproduce, make the smallest change in the existing stack, add a regression test. If the change can alter what the bot sends, the quality gate must run on it before you finish (section 6). | `existing-projects.md`, `quality-gate.md` |
 | Refactor | Pin behavior with tests first, then move code. No behavior changes. | `existing-projects.md`, `backend.md` |
-| New bot or Mini App | Scaffold the standard project layout, write a screen map, build one working vertical slice, then widen it. Every screen is a rich message. | `backend.md`, `product-journeys.md`, `messages.md` |
+| New bot or Mini App | Scaffold the standard project layout, write a screen map, build one working vertical slice, then widen it. Every screen is a rich message. | `backend.md`, `product-journeys.md`, `rich-messages.md`, `rich-recipes.md` |
 | Review or audit | Run `tg_audit.py`, confirm each lead by reading code, report by severity. | `quality.md`, `security.md` |
 
 Ask a question only when the answer changes what you build and the code cannot tell you. A missing bot token blocks live testing, not implementation.
@@ -39,7 +39,7 @@ Keep the project's stack. For new projects without constraints, default to **aio
 | Choosing among a few options | Inline keyboard | Edit the message in place |
 | Long lists, filters, multi-field forms, charts, maps | Mini App | A wizard over about five steps is a sign |
 | Sending the bot's content into other chats | Inline mode | Results cache across users unless `is_personal` |
-| Any bot screen: menus, dashboards, lists, details, settings, help, receipts, reports | Rich message (default) | `sendRichMessage`, edit with `rich_message`; library calls in `formatting.md` |
+| Any bot screen: menus, dashboards, lists, details, settings, help, receipts, reports | Rich message (default) | `sendRichMessage`, edit with `rich_message`; design in `rich-messages.md`, library calls in `formatting.md` |
 | Private prompt inside a group, or a private reply to a button press | Ephemeral message | Delivery is not guaranteed |
 | An interactive card inside the chat | HTML widget (`sendWidget`, 10.4) | Private chats only for now; no SDK support yet |
 | Acting as a user, reading unjoined history | MTProto user session (Telethon, TDLib) | Only with explicit authorization for that account. A different trust and ban-risk model. |
@@ -72,7 +72,7 @@ Ordered by cost of getting them wrong.
 **Experience**
 
 13. **Update the current screen instead of stacking new messages,** and give each screen one clear next step and a way out. Expired or invalid actions must recover, not fail silently.
-14. **Send every screen as a rich message by default** (`sendRichMessage`, edited with `rich_message`): an `<h3>` title with one meaningful icon, a status line, a compact table of facts, lists, `<details>` for secondary content, and the keyboard in `reply_markup` (`messages.md`, `formatting.md`). Use formatted HTML text only for captions, toasts, one-line replies, and stacks that cannot send rich messages. Plain unformatted text is a defect. Lead with the result; no welcome banners, emoji on every line, divider lines, or all-caps headers.
+14. **Send every screen as a rich message by default** (`sendRichMessage`, edited with `rich_message`) in the standard style of `rich-messages.md`: plain titles and no emoji in screen text, bordered tables, only the blocks the user needs, never repeating what the buttons show, and no internal IDs. Follow the recipe for the screen's job in `rich-recipes.md` and build the HTML with `assets/rich_html.py`; keep the keyboard in `reply_markup`. Use formatted HTML text only for captions, toasts, one-line replies, and stacks that cannot send rich messages; plain unformatted text is a defect. Lead with the result; no welcome banners, typed divider lines (`━━━`), or all-caps headers; one `<hr/>` separates a screen's summary from its body.
 15. **Mini Apps should feel like Telegram.** Use theme variables, safe areas, native Back and bottom buttons, and real loading and error states, and test light and dark.
 
 ## 4. Load only what the task needs
@@ -83,6 +83,8 @@ Read a reference when its trigger applies, before designing that part. All paths
 |---|---|
 | `product-journeys.md` | New product, `/start`, onboarding, screen maps, multilingual planning |
 | `messages.md` | Writing or rewriting any user-visible text |
+| `rich-messages.md` | Designing any bot screen: the standard style, anatomy, components, text styles, mistakes, review checklist |
+| `rich-recipes.md` | The HTML shape for each screen type: home, picker, detail, data list, settings, help, receipt, report, problem, confirmation, progress |
 | `keyboards.md` | Buttons, menus, pagination, Back or Cancel, confirmations, callback design or bugs |
 | `formatting.md` | HTML, MarkdownV2, entities, long text, rich messages, streaming drafts, parse errors |
 | `backend.md` | Project structure, services, database, FSM, background work, config, logging, retries, shutdown |
@@ -116,7 +118,7 @@ Run from this skill's directory. They need only Python 3 and do not touch the us
 
 Before using a recent method or field, check that the **installed** library has it: search its package directory. python-telegram-bot 22.8, for example, declares Bot API 10.0 and has no `send_rich_message`.
 
-`assets/` holds copy-and-adapt code: `init_data.py`, `init_data.mjs`, `stars_ledger.py`, `media_job.py`, `update_delivery.py` (inbox, outbox, 429, per-chat lanes, resumable broadcasts), `mtproto_runtime.py`, and `webapp_mock.js` for browser previews.
+`assets/` holds copy-and-adapt code: `init_data.py`, `init_data.mjs`, `stars_ledger.py`, `media_job.py`, `update_delivery.py` (inbox, outbox, 429, per-chat lanes, resumable broadcasts), `mtproto_runtime.py`, `rich_html.py` (escaped rich-screen builder), and `webapp_mock.js` for browser previews.
 
 ## 6. Verify, then report honestly
 

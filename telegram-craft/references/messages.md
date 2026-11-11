@@ -15,32 +15,7 @@ Use when writing or rewriting visible text. Bot screens are **rich messages** by
 
 Send every screen (menus, dashboards, lists, detail views, settings, help, receipts, reports) with `sendRichMessage` and `rich_message.html`, and update it in place with `editMessageText` and `rich_message`. Keep the inline keyboard in `reply_markup`, so callbacks work as usual. How to call it from each library: `formatting.md`.
 
-```html
-<h3>📡 Media relay</h3>
-<p>🟢 <b>Running</b> · 3 sources · 128 copied today</p>
-<table compact>
-<tr><td><b>Target</b></td><td>Daily Clips</td></tr>
-<tr><td><b>Last post</b></td><td><tg-time unix="1762850000" format="t">12:33</tg-time></td></tr>
-</table>
-<h4>Sources</h4>
-<ul><li>Travel group</li><li>Photo drops</li><li><code>-1001234567890</code></li></ul>
-<details><summary>How it works</summary><p>New photos and videos from the sources are copied to the target within seconds. Albums stay together.</p></details>
-```
-
-| Part | Rich tag |
-|---|---|
-| Screen title | `<h3>` (or `<h2>` for a root screen) with one emoji that names the screen, the same on every visit |
-| Status | A `<p>` right under the title: one marker (🟢 running, ⏸ paused, ⚪ not set up, ⚠️ needs action, ✅ done) and a few words, bold for the state |
-| Facts | A compact `<table>` of label and value, or `<b>Label:</b> value` lines for two or three facts |
-| Collections | `<ul>`/`<ol>`, a checklist (`<input type="checkbox">`) for toggles and progress, or a `<table>` with `<th>` when items have several fields |
-| Sections | `<h4>` subheadings; `<hr/>` only between real sections |
-| Secondary detail, help, logs | `<details><summary>…</summary>…</details>` so the screen stays short; `<blockquote expandable>` for quoted text |
-| Hints | `<blockquote>` or `<footer>` at the end |
-| Copyable values | `<code>`; a `copy_text` button for long ones |
-| Dates and times | `<tg-time>`, which shows in the reader's time zone |
-| Media inside a screen | `<figure>`, `<tg-collage>`, `<tg-slideshow>` |
-
-Limits: 32,768 characters, 500 blocks, 16 nesting levels, 50 media, 20 table columns.
+**Design every screen with `rich-messages.md`** (the standard style: plain titles, no emoji, bordered tables, only what the user needs, never repeating the buttons) **and `rich-recipes.md`** (the shape for each screen type). Build the HTML with `assets/rich_html.py`, which escapes user text and keeps every screen consistent.
 
 **Use a regular message instead** for: callback answers and toasts; media captions and albums (send the media, with an HTML caption); one-line chat replies inside a conversation flow (`Saved.`); and stacks that cannot send rich messages. Those use the formatted HTML fallback below.
 
@@ -48,9 +23,9 @@ Limits: 32,768 characters, 500 blocks, 16 nesting levels, 50 media, 20 table col
 
 ### Fallback: formatted HTML text
 
-Where a rich message is not possible, send with `parse_mode="HTML"` and keep the same shape: `📡 <b>Media relay</b>` title line, a status line, `<b>Label:</b> value` facts, `•` lists, `<code>` IDs, `<blockquote>` hints, `<blockquote expandable>` details. Plain unformatted text is a defect except in toasts and one-line replies.
+Where a rich message is not possible, send with `parse_mode="HTML"` and keep the same shape: a `<b>Media relay</b>` title line, a status line, `<b>Label:</b> value` facts, `•` lists, `<code>` IDs, `<blockquote>` hints, `<blockquote expandable>` details. Plain unformatted text is a defect except in toasts and one-line replies.
 
-**Rich, not noisy**, in both modes: icons on the title, the status, and buttons, not on every line or list item. No decorative dividers (`━━━`), ALL-CAPS labels, runs of `!`, bold whole sentences, centering with spaces, or ASCII tables. Serious contexts (finance, health, admin) keep the structure and may drop the title icon.
+**Standard, not noisy**, in both modes: no emoji in titles, status lines, or list items (words carry the state), and no decorative dividers (`━━━`), ALL-CAPS labels, runs of `!`, bold whole sentences, centering with spaces, or ASCII tables. Never repeat in the text what the buttons already show. Use emoji only when the user asks for them.
 
 ## Patterns by job
 
@@ -69,11 +44,11 @@ here to help you with all your conversion needs!
 ```
 After (rich message HTML):
 ```html
-<h3>🎧 Audio converter</h3>
+<h3>Audio converter</h3>
 <p>Send a video and I'll turn it into an MP3 or a voice message.</p>
 <blockquote>Files up to 20 MB.</blockquote>
 ```
-Why: a titled screen that states what to do and the one limit that will bite. Buttons, if any, carry the rest.
+Why: a titled screen that states what to do and the one limit that will bite. Buttons, if any, carry the rest. A full help screen follows the help recipe in `rich-recipes.md`.
 
 ### Status and progress
 
@@ -120,13 +95,14 @@ Buttons: `Delete report` / `Keep report`. Avoid `Yes` / `No` and "Are you sure?"
 ### Lists and details
 
 ```html
-<h3>📦 Orders</h3>
-<p><b>12 open</b></p>
-<table compact>
-<tr><th>Order</th><th>Status</th></tr>
-<tr><td>#1042</td><td>Waiting for payment</td></tr>
-<tr><td>#1041</td><td>Shipped 3 Mar</td></tr>
-<tr><td>#1039</td><td>Delivered</td></tr>
+<h3>Orders</h3>
+<p><b>12 open</b> · 3 waiting for payment</p>
+<table bordered>
+<tr><th>Order</th><th>Status</th><th>Total</th></tr>
+<tr><td>#1042</td><td>Waiting for payment</td><td align="right">1,250 ⭐</td></tr>
+<tr><td>#1041</td><td>Shipped <tg-time unix="1772524800" format="d">3 Mar</tg-time></td><td align="right">400 ⭐</td></tr>
+<tr><td>#1039</td><td>Delivered</td><td align="right">90 ⭐</td></tr>
+<tr><td>#1038</td><td>Delivered</td><td align="right">2,300 ⭐</td></tr>
 </table>
 ```
 Use a stable title. Show the fields needed to choose. Move everything else to the detail screen. Give an empty state with a next step: `No orders yet. Browse the catalog to place one.`
@@ -136,12 +112,12 @@ Use a stable title. Show the fields needed to choose. Move everything else to th
 Show what was bought, the amount, the status, and a reference. Keep the order constant across every receipt.
 
 ```html
-<h3>🧾 Receipt</h3>
-<table compact>
+<h3>Receipt</h3>
+<p><b>Paid</b> · <tg-time unix="1772524800" format="D">3 March 2026</tg-time></p>
+<table bordered compact>
 <tr><td><b>Item</b></td><td>Pro plan, 1 month</td></tr>
-<tr><td><b>Paid</b></td><td>150 ⭐</td></tr>
-<tr><td><b>Date</b></td><td>3 March 2026</td></tr>
-<tr><td><b>Ref</b></td><td><code>A81F2</code></td></tr>
+<tr><td><b>Amount</b></td><td><b>150 ⭐</b></td></tr>
+<tr><td><b>Reference</b></td><td><code>A81F2</code></td></tr>
 </table>
 <footer>Help with this payment: /paysupport</footer>
 ```

@@ -12,6 +12,7 @@ Each stage needs its own go-ahead. Stop at the first failed exit criterion.
 |---|---|---|---|
 | 0. Isolation check | Dedicated host or container | None | Preflight passes; no production service, token, or session reachable |
 | 1. Test bot, Bot API | Test bot token | Low | Message, keyboard, and error journeys pass in a real client |
+| 1b. Rich screen review | Stage 1 | None | Every screen's recipe renders as designed; screenshots recorded |
 | 2. Mini App launch | Test bot, HTTPS test URL | Low | Real `initData` accepted; tampered rejected |
 | 3. Stars purchase and refund | Stage 1, test environment | Low if test environment only | Purchase grants once; refund reverses once |
 | 4. MTProto bot session | `api_id`/`api_hash`, test bot | Low | Sign-in, one small download, clean shutdown |
@@ -65,6 +66,26 @@ Run through a real client on one phone and one desktop:
 - Compare each message Telegram accepted with what the quality gate approved. Any payload the gate passed and Telegram refused is a gate defect. Any payload the gate failed and Telegram accepted is a false positive.
 - Force one real `429` only if a harmless method can do it within `TG_LIVE_MAX_MESSAGES`. Otherwise record it as untested.
 
+### 1b. Rich screen review
+
+Send every screen in the screen map through the test bot, then screenshot each one:
+- in Telegram for Android or iOS, and in Telegram Desktop;
+- in a light and a dark theme;
+- at the default text size and one size larger.
+
+Check each screen against its recipe in `rich-recipes.md`:
+- Table borders show on every cell, including the total rows.
+- No cell is hidden, and no column is cut off on the phone.
+- Headings and dividers sit where the recipe puts them.
+- `<tg-time>` shows the reader's local time.
+- The keyboard sits directly under the content.
+
+Also check two cases:
+- An edit from one screen to another keeps the message in place.
+- An older client, or one that cannot show rich messages, receives the formatted HTML fallback.
+
+Only a screenshot of a real Telegram client counts as visual proof. A rebuilt image, an HTML preview, or the gate's capture does not. Store the screenshots outside the repository if they show real chat names.
+
 ### 2. Mini App
 
 - Launch from the keyboard button, menu button, and direct link, on iOS, Android, and desktop if available.
@@ -102,4 +123,4 @@ Start a transfer through the Bot API UI. Confirm the bot still answers another u
 
 ## What only live testing can answer
 
-Telegram's real error text and limits, client rendering, real flood behavior, sign-in codes and 2FA, file references, reconnect and update-gap recovery, and the Stars purchase UI. Offline tests cannot prove any of these.
+Telegram's real error text and limits, client rendering of rich messages (borders, hidden cells, themes, text size), real flood behavior, sign-in codes and 2FA, file references, reconnect and update-gap recovery, and the Stars purchase UI. Offline tests cannot prove any of these.

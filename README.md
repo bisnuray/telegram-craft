@@ -13,7 +13,7 @@
 **Build Telegram bots, Mini Apps, and MTProto clients that hold up in production, with the checks to show it.**
 
 ```bash
-cp -r telegram-craft ~/.claude/skills/
+npx skills add bisnuray/telegram-craft
 ```
 
 Then ask: `Build an aiogram bot that sells a monthly Stars subscription.`
@@ -36,10 +36,10 @@ Telegram projects usually fail in three ways: API calls written from memory, a c
 
 | Surface | The agent gets |
 |---|---|
-| **Bot API bots** (aiogram, python-telegram-bot, grammY, Telegraf, raw API) | Messages and `/start` flows, inline keyboards and navigation, button styles, rich messages and widgets (10.4), FSM, webhooks, rate limits, broadcasts, groups and moderation |
+| **Bot API bots** (aiogram, python-telegram-bot, pyTelegramBotAPI, grammY, Telegraf, raw API) | Messages and `/start` flows, rich message screens in one standard style (bordered tables, no emoji clutter, a recipe per screen type), inline keyboards and navigation, button styles, widgets (10.4), FSM, webhooks, rate limits, broadcasts, groups and moderation |
 | **Telegram Stars** | Invoices, subscriptions, refunds, granting on `successful_payment` exactly once |
 | **Mini Apps** | Server-side `initData` validation, theme, safe areas, native buttons, loading states, accessibility |
-| **MTProto clients** (Telethon, Pyrogram) | Bot and user sessions, sign-in, `FloodWait`, reconnects, entity caching, takeout, session security, authorization boundaries |
+| **MTProto clients** (Telethon, Pyrogram forks such as kurigram) | Bot and user sessions, sign-in, `FloodWait`, reconnects, entity caching, takeout, session security, authorization boundaries |
 | **Hybrid apps** | Bot API interface with an MTProto worker for large files or history, kept separate |
 | **Media** | ffmpeg jobs, size limits, `file_id` caching, progress, cleanup |
 
@@ -49,16 +49,30 @@ It sizes the process to the job. A one-line fix stays a one-line fix. A new bot 
 
 | Component | What it does |
 |---|---|
-| **Quality gate** | Plugs into your tests at the HTTP layer of aiogram, python-telegram-bot, or grammY. Every real outgoing message and keyboard is checked: limits, HTML and MarkdownV2, `callback_data` bytes, keyboard structure, invoices, widgets, unanswered callbacks. Invalid payloads fail CI. Interface warnings never do. |
+| **Quality gate** | Plugs into your tests at the HTTP layer of aiogram, python-telegram-bot, or grammY. Every real outgoing message and keyboard is checked: limits, HTML and MarkdownV2, rich message HTML (tags, nesting, entities, media, limits), `callback_data` bytes, keyboard structure, invoices, widgets, unanswered callbacks. Invalid payloads fail CI. Interface warnings never do. |
 | **Coverage report** | Separates *confirmed* gaps (a registered handler that never ran, a button the code builds but no test ever showed) from *possible* ones found by a source scan. It never claims full coverage because every visible button was pressed. |
 | **`update_delivery.py`** | Inbox with leased claims, outbox, 429 handling, per-chat lanes, resumable broadcasts. `--self-test` checks 9 guarantees, each against a deliberately broken variant. |
 | **`secure_mtproto_project.py`** | Adds missing `.gitignore` rules for `.session` files and `.env`, adds a CI job that fails on a committed session, and reports leaked session strings. It never deletes or revokes anything. |
 | **`tgdocs.py`** | Reads the current official Bot API and MTProto docs, so facts are looked up, not recalled. |
-| **Assets** | Copy-and-adapt code: `initData` validation (Python and JS), a Stars ledger, media jobs, MTProto runtime helpers with log redaction, a Mini App browser mock |
+| **Assets** | Copy-and-adapt code: `rich_html.py` (rich screens, escaped by construction), `initData` validation (Python and JS), a Stars ledger, media jobs, MTProto runtime helpers with log redaction, a Mini App browser mock |
 
 ## Install
 
-Copy `telegram-craft/` into your client's skills directory:
+**Any Agent Skills client** (Claude Code, Codex, OpenCode, Cursor, and others), with the [skills CLI](https://github.com/vercel-labs/skills):
+
+```bash
+npx skills add bisnuray/telegram-craft
+```
+
+**Claude Code plugin**:
+
+```text
+/plugin install telegram-craft --marketplace bisnuray/telegram-craft
+```
+
+On Claude Code older than 2.1.275, add the marketplace first: `/plugin marketplace add bisnuray/telegram-craft`, then `/plugin install telegram-craft@telegram-craft`.
+
+**Manual copy**: copy `telegram-craft/` into your client's skills directory:
 
 | Client | Personal | Project |
 |---|---|---|
@@ -139,6 +153,9 @@ Agent behavior varies by model, client, and project. Test the skill in your own 
 | [`LIVE_TEST_PLAN.md`](LIVE_TEST_PLAN.md) | Staged plan for live Telegram validation (not yet run) |
 | [`API_COVERAGE.md`](API_COVERAGE.md) | Bot API, MTProto, and Mini App coverage matrix |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Design decisions |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release history |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md) | How to contribute; how to report a vulnerability |
+| `.claude-plugin/` | Claude Code marketplace manifest |
 | `docs/` | Banner and logo |
 | `tests/` | Tests for the tools and the quality gate |
 | `evals/` | Activation test harness (`evals/trigger_compare.py`), prompt sets, and sample bots |
@@ -154,6 +171,8 @@ When a new Bot API version ships (`tgdocs.py version` reports newer than 10.4):
 5. Update the Bot API badge at the top of this README. The banner shows no version, so it needs no change.
 6. Re-run the evals affected by the change, each in its own temporary directory.
 7. To test a description change, use `evals/trigger_compare.py`. It runs one Claude process at a time, resumes after a stop, and has memory guards. Do not run evaluations in parallel on a small host.
+
+For every release, bump `metadata.version` in `SKILL.md` and `version` in `.claude-plugin/marketplace.json` together (a test checks they match), and add a `CHANGELOG.md` entry.
 
 Test every change before relying on it. Add a gotcha when an agent repeats a mistake, and remove guidance that no longer changes behavior.
 

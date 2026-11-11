@@ -400,7 +400,7 @@ def lint_screen(screen: dict[str, Any]) -> list[dict[str, str]]:
     raw = screen.get("caption" if "caption" in screen else "text")
     markup = screen.get("reply_markup") or screen.get("keyboard") and {"inline_keyboard": screen["keyboard"]}
     if not isinstance(raw, str) and "rich_message" in screen:
-        check_rich(screen.get("rich_message"), add)
+        check_rich(screen.get("rich_message"), add, markup)
         lint_markup(markup, add, str(screen.get("chat_type") or ""), str(screen.get("method") or "sendRichMessage"))
         return findings
     if not isinstance(raw, str):
@@ -572,7 +572,7 @@ def lint_call(method: str, params: dict[str, Any], location: str, chat_type: str
             return findings
     if method in TEXT_METHODS or method == "sendMessageDraft":
         if method == "editMessageText" and "rich_message" in params and "text" not in params:
-            check_rich(params.get("rich_message"), add)
+            check_rich(params.get("rich_message"), add, params.get("reply_markup"), params)
             lint_markup(params.get("reply_markup"), add, chat_type, method)
             return findings
         kind = "draft" if method == "sendMessageDraft" else ""
@@ -601,7 +601,8 @@ def lint_call(method: str, params: dict[str, Any], location: str, chat_type: str
         if params.get("ok") is False and not params.get("error_message"):
             add("error", "precheckout-message", "error_message is required when ok is false")
     elif method in ("sendRichMessage", "sendRichMessageDraft"):
-        check_rich(params.get("rich_message"), add)
+        check_rich(params.get("rich_message"), add, params.get("reply_markup"),
+                   {**params, "_draft": method == "sendRichMessageDraft"} if isinstance(params, dict) else params)
         lint_markup(params.get("reply_markup"), add, chat_type, method)
     elif method == "setMyCommands":
         commands = params.get("commands")
@@ -617,7 +618,9 @@ def lint_call(method: str, params: dict[str, Any], location: str, chat_type: str
     return findings
 
 
-def check_rich(rich: Any, add) -> None:
+def check_rich(rich: Any, add, markup: Any = None, params: Any = None) -> None:
+    if isinstance(params, dict) and params.get("parse_mode") and "text" not in params:
+        add("warning", "rich-parse-mode", "parse_mode is sent with rich_message; pass parse_mode=None (aiogram fills in the bot default)")
     if not isinstance(rich, dict):
         add("error", "rich-type", "rich_message must be an object")
         return
@@ -631,6 +634,236 @@ def check_rich(rich: Any, add) -> None:
         size = len(data.encode("utf-8"))
         if not 1 <= size <= CALLBACK_DATA_LIMIT:
             add("error", "callback-bytes", f"rich message button data {data[:30]!r} is {size} bytes (limit 1-{CALLBACK_DATA_LIMIT})")
+    if isinstance(rich.get("html"), str):
+        check_rich_html(rich, add, draft=bool(params and params.get("_draft")))
+        check_rich_design(rich["html"], add, markup)
+
+
+# Rich message HTML (Bot API 10.1+), from the official tag list in bots/api/rich-messages.
+RICH_INLINE_TAGS = {"a", "b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "code", "mark", "sub", "sup",
+                    "tg-spoiler", "tg-reference", "tg-emoji", "tg-time", "tg-math", "br", "cite", "tg-button", "input"}
+RICH_BLOCK_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "pre", "footer", "hr", "ul", "ol", "li", "blockquote",
+                   "aside", "img", "video", "audio", "tg-document", "figure", "figcaption", "tg-map", "tg-collage",
+                   "tg-slideshow", "table", "caption", "tr", "th", "td", "details", "summary", "tg-math-block",
+                   "tg-button-row", "tg-thinking"}
+RICH_VOID_TAGS = {"hr", "br", "img", "input", "tg-map"}
+RICH_NAMED_ENTITIES = {"lt", "gt", "amp", "quot", "apos", "nbsp", "hellip", "mdash", "ndash",
+                       "lsquo", "rsquo", "ldquo", "rdquo"}
+RICH_PARENTS = {
+    "li": {"ul", "ol"}, "tr": {"table"}, "td": {"tr"}, "th": {"tr"}, "caption": {"table"},
+    "summary": {"details"}, "figcaption": {"figure", "tg-collage", "tg-slideshow"},
+    "cite": {"blockquote", "aside", "figcaption"}, "input": {"li"},
+}
+RICH_CHILDREN = {"table": {"tr", "caption"}, "tr": {"td", "th"}, "ul": {"li"}, "ol": {"li"},
+                 "tg-button-row": {"tg-button"}}
+RICH_MEDIA_TAGS = {"img", "video", "audio", "tg-document"}
+RICH_BUTTON_TYPES = {
+    "url": "url", "callback_data": "data", "web_app": "url", "login_url": "url", "switch_inline_query": "query",
+    "switch_inline_query_current_chat": "query", "switch_inline_query_chosen_chat": "query",
+    "copy_text": "text", "disabled": None,
+}
+RICH_BUTTON_STYLES = {"primary", "success", "danger", "link"}
+RICH_ENUMS = {("td", "align"): {"left", "center", "right"}, ("th", "align"): {"left", "center", "right"},
+              ("td", "valign"): {"top", "middle", "bottom"}, ("th", "valign"): {"top", "middle", "bottom"},
+              ("tg-button-row", "align"): {"left", "center", "right"}, ("ol", "type"): {"1", "a", "A", "i", "I"},
+              ("li", "type"): {"1", "a", "A", "i", "I"}, ("input", "type"): {"checkbox"}}
+TIME_FORMAT_RE = re.compile(r"r|w?[dD]?[tT]?")
+MEDIA_REF_RE = re.compile(r"tg://(photo|video|document|audio)\?id=([A-Za-z0-9_-]{1,64})$")
+MEDIA_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+
+
+class RichHtmlChecker(HTMLParser):
+    """Structure and attribute checks for rich_message.html. Errors are what Telegram would reject."""
+
+    def __init__(self, draft: bool = False) -> None:
+        super().__init__(convert_charrefs=False)
+        self.draft = draft
+        self.stack: list[str] = []
+        self.errors: list[tuple[str, str]] = []
+        self.blocks = 0
+        self.depth = 0
+        self.media = 0
+        self.media_refs: set[str] = set()
+        self.row_cells = 0
+
+    def err(self, code: str, message: str) -> None:
+        if (code, message) not in self.errors:
+            self.errors.append((code, message))
+
+    def handle_entityref(self, name: str) -> None:
+        if name not in RICH_NAMED_ENTITIES:
+            self.err("rich-entity", f"&{name}; is not supported; use a numeric entity or the character itself")
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs, closed=True)
+
+    def handle_starttag(self, tag, attrs, closed: bool = False):
+        values = {k.lower(): v for k, v in attrs}
+        parent = self.stack[-1] if self.stack else None
+        if tag not in RICH_INLINE_TAGS | RICH_BLOCK_TAGS:
+            hint = " (rows go directly in <table>)" if tag in ("thead", "tbody", "tfoot") else ""
+            self.err("rich-tag", f"<{tag}> is not a supported rich message tag{hint}")
+        if tag == "tg-thinking" and not self.draft:
+            self.err("rich-tag", "<tg-thinking> works only in sendRichMessageDraft")
+        if tag in RICH_PARENTS and parent not in RICH_PARENTS[tag]:
+            self.err("rich-nesting", f"<{tag}> must be inside {' or '.join('<' + p + '>' for p in sorted(RICH_PARENTS[tag]))}")
+        if parent in RICH_CHILDREN and tag not in RICH_CHILDREN[parent]:
+            self.err("rich-nesting", f"<{parent}> may contain only {', '.join('<' + c + '>' for c in sorted(RICH_CHILDREN[parent]))}, not <{tag}>")
+        if tag in RICH_BLOCK_TAGS:
+            self.blocks += 1
+        if tag == "tr":
+            self.row_cells = 0
+        if tag in ("td", "th"):
+            span = values.get("colspan") or "1"
+            self.row_cells += int(span) if span.isdigit() else 1
+            if self.row_cells > 20:
+                self.err("rich-columns", "a table row has more than 20 columns")
+        self.check_attrs(tag, values)
+        if not closed and tag not in RICH_VOID_TAGS:
+            self.stack.append(tag)
+            self.depth = max(self.depth, len(self.stack))
+
+    def check_attrs(self, tag: str, values: dict) -> None:
+        for (t, key), allowed in RICH_ENUMS.items():
+            if t == tag and values.get(key) is not None and values[key] not in allowed:
+                self.err("rich-attr", f'<{tag} {key}="{values[key]}"> must be one of {", ".join(sorted(allowed))}')
+        for key in ("colspan", "rowspan", "start", "value", "zoom"):
+            if values.get(key) is not None and not str(values[key]).isdigit():
+                self.err("rich-attr", f"<{tag} {key}> must be a positive whole number")
+        if tag == "a" and not (values.get("href") or values.get("name")):
+            self.err("rich-attr", "<a> needs href or name")
+        if tag == "tg-time":
+            if not (values.get("unix") or "").isdigit():
+                self.err("rich-attr", "<tg-time> needs a numeric unix attribute")
+            if values.get("format") is not None and not TIME_FORMAT_RE.fullmatch(values["format"]):
+                self.err("rich-attr", f'<tg-time format="{values["format"]}"> must match r|w?[dD]?[tT]?')
+        if tag == "tg-emoji" and not (values.get("emoji-id") or "").isdigit():
+            self.err("rich-attr", "<tg-emoji> needs a numeric emoji-id")
+        if tag == "tg-map":
+            for key in ("lat", "long"):
+                try:
+                    float(values.get(key) or "")
+                except ValueError:
+                    self.err("rich-attr", f"<tg-map> needs numeric {key}")
+        if tag in RICH_MEDIA_TAGS:
+            src = values.get("src") or ""
+            if tag == "img" and src.startswith("tg://emoji?id="):
+                return
+            self.media += 1
+            ref = MEDIA_REF_RE.match(src)
+            if ref:
+                self.media_refs.add(ref.group(2))
+            elif not re.match(r"https?://", src):
+                self.err("rich-media", f"<{tag}> src must be an http(s) URL or a tg://{tag if tag != 'img' else 'photo'}?id= link")
+        if tag == "tg-button":
+            kind = values.get("type")
+            if kind not in RICH_BUTTON_TYPES:
+                self.err("rich-button", f'<tg-button type="{kind}"> is not a button type')
+            elif RICH_BUTTON_TYPES[kind] and not values.get(RICH_BUTTON_TYPES[kind]):
+                self.err("rich-button", f'<tg-button type="{kind}"> needs {RICH_BUTTON_TYPES[kind]}')
+            if values.get("style") is not None and values["style"] not in RICH_BUTTON_STYLES:
+                self.err("rich-button", f'<tg-button style="{values["style"]}"> must be one of {", ".join(sorted(RICH_BUTTON_STYLES))}')
+
+    def handle_endtag(self, tag):
+        if tag in RICH_VOID_TAGS:
+            return
+        if tag not in self.stack:
+            self.err("rich-unbalanced", f"</{tag}> closes a tag that is not open")
+            return
+        while self.stack:
+            top = self.stack.pop()
+            if top == tag:
+                break
+            self.err("rich-unbalanced", f"<{top}> is not closed before </{tag}>")
+
+    def finish(self) -> list[tuple[str, str]]:
+        self.close()
+        for tag in reversed(self.stack):
+            self.err("rich-unbalanced", f"<{tag}> is never closed")
+        if self.blocks > 500:
+            self.err("rich-blocks", f"{self.blocks} blocks (limit 500)")
+        if self.depth > 16:
+            self.err("rich-nesting", f"nesting depth {self.depth} (limit 16)")
+        if self.media > 50:
+            self.err("rich-media", f"{self.media} media (limit 50)")
+        return self.errors
+
+
+def check_rich_html(rich: dict, add, draft: bool = False) -> None:
+    checker = RichHtmlChecker(draft)
+    checker.feed(rich["html"])
+    for code, message in checker.finish():
+        add("error", code, message)
+    declared = {m.get("id") for m in rich.get("media") or [] if isinstance(m, dict)}
+    for item in rich.get("media") or []:
+        if not isinstance(item, dict) or not MEDIA_ID_RE.fullmatch(str(item.get("id", ""))) or not isinstance(item.get("media"), dict):
+            add("error", "rich-media", "each rich_message.media item needs an id (1-64 of A-Z a-z 0-9 _ -) and a media object")
+    for ref in sorted(checker.media_refs - declared):
+        add("error", "rich-media", f"tg://…?id={ref} is used in the HTML but not listed in rich_message.media")
+    for ref in sorted(declared - checker.media_refs - {None}):
+        add("warning", "rich-media-unused", f"rich_message.media item {ref!r} is never used in the HTML")
+
+
+TAG_RE = re.compile(r"<(/?)([a-z][a-z0-9-]*)\b([^>]*)>", re.IGNORECASE)
+FAKE_RULE_RE = re.compile(r"[━═─_]{4,}|-{5,}|={5,}")
+FAKE_BULLET_RE = re.compile(r"(?:^|<br\s*/?>|<p>)\s*[•▪▫◦●○►▶➤✓✔]\s", re.IGNORECASE)
+HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+
+
+def _button_labels(markup: Any) -> list[str]:
+    rows = markup.get("inline_keyboard") if isinstance(markup, dict) else None
+    return [b["text"] for row in rows or [] if isinstance(row, list) for b in row if isinstance(b, dict) and isinstance(b.get("text"), str)]
+
+
+def _label_key(text: str) -> str:
+    """Compare a button label with a table cell or list item: no tags, emoji, marks, or case."""
+    text = unescape(re.sub(r"<[^>]+>", "", text))
+    return re.sub(r"[\W_]+", " ", EMOJI_RE.sub("", text)).strip().lower()
+
+
+def check_rich_design(html: str, add, markup: Any = None) -> None:
+    """Design warnings for rich screens (references/rich-messages.md). Warnings only: never fail CI by default."""
+    tags = [(m.group(1) == "/", m.group(2).lower(), m.group(3)) for m in TAG_RE.finditer(html)]
+    opened = [name for closing, name, _ in tags if not closing]
+    blocks = [n for n in opened if n in HEADING_TAGS | {"p", "ul", "ol", "table", "details", "blockquote", "aside",
+                                                        "footer", "hr", "pre", "figure", "tg-collage", "tg-slideshow"}]
+    if not blocks:
+        return
+    if blocks[0] not in HEADING_TAGS and len(blocks) > 1:
+        add("warning", "rich-no-title", "a screen starts with an <h2>/<h3> title; put notices under it")
+    # Tables with a single row and no header are a status fact dressed as a table.
+    for chunk in re.findall(r"<table\b.*?</table>", html, re.IGNORECASE | re.DOTALL):
+        if len(re.findall(r"<tr\b", chunk, re.IGNORECASE)) == 1 and not re.search(r"<th\b", chunk, re.IGNORECASE):
+            add("warning", "rich-one-row-table", "one-row table; move the fact to the status line or add the facts the user needs")
+            break
+    text_only = re.sub(r"<[^>]+>", "\n", html)
+    if FAKE_RULE_RE.search(text_only) or FAKE_BULLET_RE.search(html) or re.search(r"(?:<br\s*/?>\s*){2,}", html, re.IGNORECASE):
+        add("warning", "rich-fake-structure", "text rules, typed bullets, or <br> stacks; use <hr/>, <ul>, and <p>")
+    if "hr" in blocks:
+        first, last = blocks.index("hr"), len(blocks) - 1 - blocks[::-1].index("hr")
+        adjacent = any(a == b == "hr" for a, b in zip(blocks, blocks[1:]))
+        if blocks.count("hr") > 2 or first == 0 or first == 1 and blocks[0] in HEADING_TAGS or last == len(blocks) - 1 or adjacent:
+            add("warning", "rich-divider", "use one <hr/> between the summary and the body; not after the title, first, last, or doubled")
+    if opened.count("blockquote") > 1:
+        add("warning", "rich-many-quotes", f"{opened.count('blockquote')} blockquotes; keep one hint per screen")
+    if opened.count("mark") > 1:
+        add("warning", "rich-many-marks", "more than one <mark>; mark only the value that just changed")
+    visible = unescape(re.sub(r"<tg-button\b.*?</tg-button>|<[^>]+>", " ", html, flags=re.IGNORECASE | re.DOTALL))
+    if EMOJI_RE.search(visible.replace("⭐", "")):
+        add("warning", "rich-emoji", "emoji in screen text; the standard style uses plain words (bold for the state)")
+    for attrs in re.findall(r"<table\b([^>]*)>", html, re.IGNORECASE):
+        if "bordered" not in attrs.lower():
+            add("warning", "rich-table-unbordered", "tables are <table bordered> in the standard style")
+            break
+    if re.search(r"<(td|th)\b[^>]*>\s*</\1>", html, re.IGNORECASE):
+        add("warning", "rich-empty-cell", "Telegram hides a cell with no text, which breaks the borders; write a dash or use colspan")
+    if len(blocks) > 8:
+        add("warning", "rich-busy", f"{len(blocks)} blocks; keep the main content and move the rest to its own screen")
+    labels = {norm for norm in (_label_key(x) for x in _button_labels(markup)) if len(norm) >= 3}
+    shown = {_label_key(x) for x in re.findall(r"<(?:td|li)\b[^>]*>(.*?)</(?:td|li)>", html, re.IGNORECASE | re.DOTALL)}
+    repeated = labels & shown
+    if len(repeated) >= 2:
+        add("warning", "rich-repeats-keyboard", f"{len(repeated)} items appear in both the text and the buttons; the buttons are the list")
 
 
 TG_BUTTON_RE = re.compile(r"<tg-button\b([^>]*)>", re.IGNORECASE)
