@@ -24,7 +24,7 @@ Match the process to the request. Build what was asked, and list recommended ext
 | Copy, keyboard, or `/start` redesign | Change presentation only. Keep `callback_data`, routes, facts, and locale keys. Add or run the quality gate (`quality-gate.md`). | `messages.md`, `keyboards.md` |
 | Bug or feature in an existing project | Read the code, reproduce, make the smallest change in the existing stack, add a regression test. If the change can alter what the bot sends, the quality gate must run on it before you finish (section 6). | `existing-projects.md`, `quality-gate.md` |
 | Refactor | Pin behavior with tests first, then move code. No behavior changes. | `existing-projects.md`, `backend.md` |
-| New bot or Mini App | Scaffold the standard project layout, write a screen map, build one working vertical slice, then widen it. Every screen uses the default rich HTML style. | `backend.md`, `product-journeys.md`, `messages.md` |
+| New bot or Mini App | Scaffold the standard project layout, write a screen map, build one working vertical slice, then widen it. Every screen is a rich message. | `backend.md`, `product-journeys.md`, `messages.md` |
 | Review or audit | Run `tg_audit.py`, confirm each lead by reading code, report by severity. | `quality.md`, `security.md` |
 
 Ask a question only when the answer changes what you build and the code cannot tell you. A missing bot token blocks live testing, not implementation.
@@ -39,7 +39,7 @@ Keep the project's stack. For new projects without constraints, default to **aio
 | Choosing among a few options | Inline keyboard | Edit the message in place |
 | Long lists, filters, multi-field forms, charts, maps | Mini App | A wizard over about five steps is a sign |
 | Sending the bot's content into other chats | Inline mode | Results cache across users unless `is_personal` |
-| Reports with tables, headings, collapsible parts | Rich message | `sendRichMessage`; check SDK support |
+| Any bot screen: menus, dashboards, lists, details, settings, help, receipts, reports | Rich message (default) | `sendRichMessage`, edit with `rich_message`; library calls in `formatting.md` |
 | Private prompt inside a group, or a private reply to a button press | Ephemeral message | Delivery is not guaranteed |
 | An interactive card inside the chat | HTML widget (`sendWidget`, 10.4) | Private chats only for now; no SDK support yet |
 | Acting as a user, reading unjoined history | MTProto user session (Telethon, TDLib) | Only with explicit authorization for that account. A different trust and ban-risk model. |
@@ -72,7 +72,7 @@ Ordered by cost of getting them wrong.
 **Experience**
 
 13. **Update the current screen instead of stacking new messages,** and give each screen one clear next step and a way out. Expired or invalid actions must recover, not fail silently.
-14. **Format every screen in rich HTML by default.** A bold title with one meaningful icon, a status line, bold labels with values, `code` for IDs, a blockquote for hints, an expandable blockquote for details, and a rich message for long structured content when the stack supports it (`messages.md`). Plain unformatted text is a defect. Lead with the result; no welcome banners, emoji on every line, divider lines, or all-caps headers.
+14. **Send every screen as a rich message by default** (`sendRichMessage`, edited with `rich_message`): an `<h3>` title with one meaningful icon, a status line, a compact table of facts, lists, `<details>` for secondary content, and the keyboard in `reply_markup` (`messages.md`, `formatting.md`). Use formatted HTML text only for captions, toasts, one-line replies, and stacks that cannot send rich messages. Plain unformatted text is a defect. Lead with the result; no welcome banners, emoji on every line, divider lines, or all-caps headers.
 15. **Mini Apps should feel like Telegram.** Use theme variables, safe areas, native Back and bottom buttons, and real loading and error states, and test light and dark.
 
 ## 4. Load only what the task needs

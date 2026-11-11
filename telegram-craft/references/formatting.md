@@ -11,7 +11,7 @@ Use for parse modes, escaping, entities, long text, rich messages, and streaming
 | No parse mode | Echoing user or model text as-is. Safest. |
 | MarkdownV2 | Only when a project already uses it. |
 | Legacy `Markdown` | Do not add it. |
-| Rich message | Headings, tables, collapsible blocks, long documents, up to 32,768 characters. |
+| Rich message | **Default for bot screens**: headings, tables, lists, collapsible blocks, up to 32,768 characters. |
 
 ## HTML
 
@@ -51,18 +51,37 @@ Inline links show users an "Open this link?" alert. Control previews with `link_
 
 Text is 1–4096 and captions 0–1024 characters **after** entity parsing. Split on paragraph boundaries, never mid-tag, mid-entity, or mid-surrogate pair, and keep tags balanced in each part. Add keyboards only to the last part. Over about two parts, consider a rich message, a document, or pagination.
 
-## Rich messages (Bot API 10.1+)
+## Rich messages (Bot API 10.1+): the default for screens
 
-Send with `sendRichMessage` using exactly one of `html`, `markdown`, or `blocks`, and edit with `editMessageText` and `rich_message`.
+Bot screens are rich messages by default (`messages.md`). Send with `sendRichMessage` using exactly one of `html`, `markdown`, or `blocks`, and edit in place with `editMessageText` and `rich_message`. They work in private chats, groups, and channels, and accept the usual `reply_markup`.
 
-Limits: 32,768 characters, 500 blocks, 16 nesting levels, 50 media, 20 table columns.
+Limits: 32,768 characters, 500 blocks, 16 nesting levels, 50 media, 20 table columns. Tag list: `tgdocs.py page bots/api/rich-messages`.
 
-- Use `blocks` for programmatic content: block text is literal, so dynamic strings do not need markup escaping.
-- Model or user text placed in rich `markdown` can create structure, buttons, and links, so use blocks or neutralize it.
-- Do not use rich messages by default. A short status or confirmation is better as a regular message.
-- Check SDK support. aiogram 3.31 has it; python-telegram-bot 22.8 does not, though `bot.do_api_request` can call it raw.
+| Stack | Send | Edit |
+|---|---|---|
+| aiogram 3.31+ | `await bot.send_rich_message(chat_id, InputRichMessage(html=html), reply_markup=kb)` | `await bot.edit_message_text(chat_id=..., message_id=..., rich_message=InputRichMessage(html=html), reply_markup=kb)` |
+| grammY 1.46+ | `await ctx.replyWithRichMessage({ html }, { reply_markup })` | `await ctx.editMessageText({ html }, { reply_markup })` (the first argument takes text or a rich message) |
+| python-telegram-bot 22.8 | `await bot.do_api_request("sendRichMessage", api_kwargs={"chat_id": ..., "rich_message": {"html": html}, "reply_markup": kb.to_dict()})` | `do_api_request("editMessageText", ...)` with `rich_message` |
+| Telethon 1.45 (layer 229) | Raw request, below | `EditMessageRequest(peer, id, rich_message=..., reply_markup=...)` |
 
-Look up block types with `tgdocs.py page bots/api/rich-messages --toc`.
+```python
+from telethon.tl.functions.messages import SendMessageRequest
+from telethon.tl.types import InputRichMessageHTML
+
+await client(SendMessageRequest(
+    peer=await client.get_input_entity(chat_id),
+    message="",                                   # rich content replaces the text
+    rich_message=InputRichMessageHTML(html=html),
+    reply_markup=client.build_reply_markup(buttons),
+))
+```
+
+The MTProto `rich_message` field is in Telethon's schema but not yet in the public MTProto docs, so report it as unverified until a test bot shows the screen (L3). Keep a fallback to `parse_mode="html"` text if the server rejects it. In a hybrid app, prefer running the control bot on a Bot API library (aiogram) where rich messages are documented, and keep Telethon for the user client.
+
+- Escape every dynamic value; user text in rich `html` or `markdown` can otherwise create headings, links, and `<tg-button>`s. Use `blocks` when most of the content is dynamic: block text is literal.
+- Set `skip_entity_detection` when showing user-written text.
+- Media in a rich message is a block (`<figure>`, `<tg-collage>`); files come from HTTPS URLs or `tg://photo?id=` links plus the `media` field. Media captions and albums stay regular messages.
+- Callback answers, toasts, and one-line replies inside a flow stay regular messages.
 
 ## Streaming drafts (private chats)
 

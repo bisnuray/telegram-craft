@@ -1,6 +1,6 @@
 # Message design
 
-Use when writing or rewriting visible text. A chat message has no layout engine, so hierarchy comes from HTML formatting: a titled, iconed header, bold labels, code, and blockquotes. Every screen uses the default rich style below unless the user asks otherwise.
+Use when writing or rewriting visible text. Bot screens are **rich messages** by default (Bot API 10.1+): real headings, tables, lists, and collapsible sections, rendered natively by Telegram. Formatted HTML text is the fallback where rich messages cannot be sent.
 
 ## Principles
 
@@ -11,40 +11,46 @@ Use when writing or rewriting visible text. A chat message has no layout engine,
 - **Use the user's words.** "Your order", not "entity" or "record". No enum names, HTTP codes, or stack traces.
 - **Keep every fact when rewriting**: prices, dates, limits, legal text, placeholders, and locale keys.
 
-## Default screen style: rich HTML
+## Default: rich message screens
 
-Send every message and edit with HTML parse mode (aiogram and python-telegram-bot `parse_mode="HTML"`, grammY `parse_mode: "HTML"`, Telethon `parse_mode="html"`). Plain unformatted text is a defect, except for one-line toasts and callback answers.
+Send every screen (menus, dashboards, lists, detail views, settings, help, receipts, reports) with `sendRichMessage` and `rich_message.html`, and update it in place with `editMessageText` and `rich_message`. Keep the inline keyboard in `reply_markup`, so callbacks work as usual. How to call it from each library: `formatting.md`.
 
+```html
+<h3>📡 Media relay</h3>
+<p>🟢 <b>Running</b> · 3 sources · 128 copied today</p>
+<table compact>
+<tr><td><b>Target</b></td><td>Daily Clips</td></tr>
+<tr><td><b>Last post</b></td><td><tg-time unix="1762850000" format="t">12:33</tg-time></td></tr>
+</table>
+<h4>Sources</h4>
+<ul><li>Travel group</li><li>Photo drops</li><li><code>-1001234567890</code></li></ul>
+<details><summary>How it works</summary><p>New photos and videos from the sources are copied to the target within seconds. Albums stay together.</p></details>
 ```
-📡 <b>Media relay</b>
-🟢 Running · 3 sources
 
-<b>Target:</b> Daily Clips
-<b>Sources:</b>
-• Travel group
-• Photo drops
-• <code>-1001234567890</code>
-
-<blockquote>New photos and videos from the sources are copied to the target within seconds.</blockquote>
-```
-
-| Part | How |
+| Part | Rich tag |
 |---|---|
-| Title | First line: one emoji that names the screen, then the title in bold. The same icon on every visit. |
-| Status | Second line when the screen has a state: one marker (🟢 running, ⏸ paused, ⚪ not set up, ⚠️ needs action, ✅ done) and a few words. |
-| Facts | `<b>Label:</b> value`, one per line, grouped with blank lines. |
-| Lists | `•` bullets, up to about 10 items; paginate beyond that. |
-| Copyable values | `<code>` for IDs, usernames, commands, keys. |
-| Hints and explanations | `<blockquote>` at the end of the screen. |
-| Details, logs, long help | `<blockquote expandable>`, so the screen stays short. |
-| Links | `<a href="...">` with meaningful text, never a bare URL in a sentence. |
-| Dates and times | `<tg-time>` where supported, otherwise one consistent format. |
-| Long structured content (tables, reports, help pages, more than about 15 lines) | A rich message (`sendRichMessage`, `formatting.md`) when the library or a raw API call supports it; otherwise HTML with an expandable blockquote. |
-| Buttons | An icon on the main action and on navigation is fine (`⚙️ Settings`, `‹ Back`); `style` per `keyboards.md`. |
+| Screen title | `<h3>` (or `<h2>` for a root screen) with one emoji that names the screen, the same on every visit |
+| Status | A `<p>` right under the title: one marker (🟢 running, ⏸ paused, ⚪ not set up, ⚠️ needs action, ✅ done) and a few words, bold for the state |
+| Facts | A compact `<table>` of label and value, or `<b>Label:</b> value` lines for two or three facts |
+| Collections | `<ul>`/`<ol>`, a checklist (`<input type="checkbox">`) for toggles and progress, or a `<table>` with `<th>` when items have several fields |
+| Sections | `<h4>` subheadings; `<hr/>` only between real sections |
+| Secondary detail, help, logs | `<details><summary>…</summary>…</details>` so the screen stays short; `<blockquote expandable>` for quoted text |
+| Hints | `<blockquote>` or `<footer>` at the end |
+| Copyable values | `<code>`; a `copy_text` button for long ones |
+| Dates and times | `<tg-time>`, which shows in the reader's time zone |
+| Media inside a screen | `<figure>`, `<tg-collage>`, `<tg-slideshow>` |
 
-Escape every dynamic value. Check the installed library's HTML support before using a tag: Telethon's parser handles `b i u s code pre a blockquote`; if `expandable` or `tg-time` is missing in the installed version, fall back to a plain blockquote or a formatted date.
+Limits: 32,768 characters, 500 blocks, 16 nesting levels, 50 media, 20 table columns.
 
-**Rich, not noisy.** Icons go on the title, the status, and buttons, not on every line. No decorative dividers (`━━━`), ALL-CAPS labels, runs of `!`, bold whole sentences, centering with spaces, or ASCII tables (phones wrap monospace). Serious contexts (finance, health, admin) keep the structure and may drop the title icon.
+**Use a regular message instead** for: callback answers and toasts; media captions and albums (send the media, with an HTML caption); one-line chat replies inside a conversation flow (`Saved.`); and stacks that cannot send rich messages. Those use the formatted HTML fallback below.
+
+**Security:** escape every dynamic value (`<`, `>`, `&`, quotes in attributes). Unescaped user text in rich HTML can add headings, links, and even `<tg-button>`s. Set `skip_entity_detection` when the screen shows user-written text, so their `@mentions`, links, and commands are not made tappable.
+
+### Fallback: formatted HTML text
+
+Where a rich message is not possible, send with `parse_mode="HTML"` and keep the same shape: `📡 <b>Media relay</b>` title line, a status line, `<b>Label:</b> value` facts, `•` lists, `<code>` IDs, `<blockquote>` hints, `<blockquote expandable>` details. Plain unformatted text is a defect except in toasts and one-line replies.
+
+**Rich, not noisy**, in both modes: icons on the title, the status, and buttons, not on every line or list item. No decorative dividers (`━━━`), ALL-CAPS labels, runs of `!`, bold whole sentences, centering with spaces, or ASCII tables. Serious contexts (finance, health, admin) keep the structure and may drop the title icon.
 
 ## Patterns by job
 
@@ -61,12 +67,10 @@ here to help you with all your conversion needs!
 ✨ Fast  🔥 Reliable  💎 Premium quality
 👇 Please choose an option below to get started! 👇
 ```
-After:
-```
-🎧 <b>Audio converter</b>
-
-Send a video and I'll turn it into an MP3 or a voice message.
-
+After (rich message HTML):
+```html
+<h3>🎧 Audio converter</h3>
+<p>Send a video and I'll turn it into an MP3 or a voice message.</p>
 <blockquote>Files up to 20 MB.</blockquote>
 ```
 Why: a titled screen that states what to do and the one limit that will bite. Buttons, if any, carry the rest.
@@ -115,12 +119,15 @@ Buttons: `Delete report` / `Keep report`. Avoid `Yes` / `No` and "Are you sure?"
 
 ### Lists and details
 
-```
-📦 <b>Orders</b> · 12 open
-
-#1042  Waiting for payment
-#1041  Shipped 3 Mar
-#1039  Delivered
+```html
+<h3>📦 Orders</h3>
+<p><b>12 open</b></p>
+<table compact>
+<tr><th>Order</th><th>Status</th></tr>
+<tr><td>#1042</td><td>Waiting for payment</td></tr>
+<tr><td>#1041</td><td>Shipped 3 Mar</td></tr>
+<tr><td>#1039</td><td>Delivered</td></tr>
+</table>
 ```
 Use a stable title. Show the fields needed to choose. Move everything else to the detail screen. Give an empty state with a next step: `No orders yet. Browse the catalog to place one.`
 
@@ -128,14 +135,15 @@ Use a stable title. Show the fields needed to choose. Move everything else to th
 
 Show what was bought, the amount, the status, and a reference. Keep the order constant across every receipt.
 
-```
-<b>Receipt</b>
-Item: Pro plan, 1 month
-Paid: 150 ⭐
-Date: 3 March 2026
-Ref: <code>A81F2</code>
-
-Help with this payment: /paysupport
+```html
+<h3>🧾 Receipt</h3>
+<table compact>
+<tr><td><b>Item</b></td><td>Pro plan, 1 month</td></tr>
+<tr><td><b>Paid</b></td><td>150 ⭐</td></tr>
+<tr><td><b>Date</b></td><td>3 March 2026</td></tr>
+<tr><td><b>Ref</b></td><td><code>A81F2</code></td></tr>
+</table>
+<footer>Help with this payment: /paysupport</footer>
 ```
 
 ### Settings
