@@ -1,29 +1,55 @@
 # Backend architecture
 
-Use for structure, data, state, background work, and operations. Add a layer only when it solves a problem the project has.
+Use for structure, data, state, background work, and operations. Size infrastructure (queues, Redis, extra processes) to the problem, but always organize the code.
 
-## Scale the structure
+## Project layout
 
-| Size | Shape |
-|---|---|
-| Single-purpose utility, under about 300 lines | `bot.py`, `config.py`, a test file. Functions, not classes. |
-| Several features with data | Routers per feature, `services/`, `db/`, `keyboards/`, `texts/` |
-| Payments, jobs, Mini App, or several processes | Add `worker/` and `api/`, migrations, a queue, and shared domain code |
+Every new bot uses a package organized by role. A single file is acceptable only for a throwaway script under about 150 lines that the user asked for as one file.
+
+```
+mybot/                     # project root
+  app/                     # the package (name it after the product)
+    __main__.py            # wiring and startup only: config, clients, routers, run
+    config.py              # typed settings from the environment, fail fast
+    handlers/              # one module per feature: parse update, call service, render
+      start.py
+      settings.py
+    keyboards/             # keyboard builders and callback_data schemas
+    texts/                 # every user-visible string and screen renderer (texts/en.py)
+    services/              # business rules and authorization, no Telegram types
+    storage/               # database access and migrations
+    workers/               # background jobs (media, broadcasts), if any
+  tools/                   # one-off operator tools, e.g. login.py for an MTProto session
+  tests/                   # mirrors app/: test_handlers_*, test_services_*
+  var/                     # runtime data: sessions/, downloads/, db, logs (git-ignored)
+  .env.example             # every variable with a comment, no real values
+  .gitignore               # .env, var/, *.session, caches
+  requirements.txt         # or pyproject.toml, with pinned framework versions
+  README.md                # what it does, setup, BotFather/my.telegram.org steps, run, test
+```
+
+For grammY or Telegraf, use the same roles under `src/` (`src/handlers`, `src/keyboards`, `src/texts`, `src/services`, `src/storage`).
+
+**Hybrid Bot API + MTProto, or a bot plus a user client:** keep each client in its own package and share only services and storage.
 
 ```
 app/
-  __main__.py          # wiring and startup only
-  config.py            # typed settings, fail fast
-  handlers/orders.py   # parse update, call service, render
-  services/orders.py   # business rules and authorization
-  db/repo.py           # queries
-  keyboards/orders.py
-  texts/en.py          # strings
-  workers/convert.py
-tests/
+  bot/            # control bot: handlers/, keyboards/, texts/
+  userclient/     # MTProto client: client.py (start, reconnect), listeners/, relay/
+  services/       # shared rules, used by both
+  storage/
+  __main__.py     # starts both clients under one supervisor
+tools/login.py    # interactive session creation, never run by the service
 ```
 
-Dependencies point inward: handlers call services, and services do not import Telegram types. That lets you test business rules without a bot. For small bots this separation is optional.
+Rules that hold at every size:
+
+- **One responsibility per module.** Text and screen rendering live in `texts/`, buttons in `keyboards/`, update handling in `handlers/`. A module that mixes them gets split.
+- **Split a module past about 300 lines.**
+- **Dependencies point inward:** handlers call services; services do not import Telegram types, so business rules are testable without a bot.
+- **Nothing runtime in the code tree.** Sessions, downloads, databases, and logs go under `var/` (or a configured path), never beside source files or in the project root.
+- **Ship the setup files:** `.env.example`, `.gitignore`, a requirements file, and a README with the exact run and test commands.
+- In an existing project, keep its layout; only move code when the user asks for a refactor.
 
 Do not create the `Bot` or start polling at import time.
 

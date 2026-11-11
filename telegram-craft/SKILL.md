@@ -24,12 +24,12 @@ Match the process to the request. Build what was asked, and list recommended ext
 | Copy, keyboard, or `/start` redesign | Change presentation only. Keep `callback_data`, routes, facts, and locale keys. Add or run the quality gate (`quality-gate.md`). | `messages.md`, `keyboards.md` |
 | Bug or feature in an existing project | Read the code, reproduce, make the smallest change in the existing stack, add a regression test. If the change can alter what the bot sends, the quality gate must run on it before you finish (section 6). | `existing-projects.md`, `quality-gate.md` |
 | Refactor | Pin behavior with tests first, then move code. No behavior changes. | `existing-projects.md`, `backend.md` |
-| New bot or Mini App | Write a screen map, then build one working vertical slice, then widen it. | `product-journeys.md`, `backend.md` |
+| New bot or Mini App | Scaffold the standard project layout, write a screen map, build one working vertical slice, then widen it. Every screen uses the default rich HTML style. | `backend.md`, `product-journeys.md`, `messages.md` |
 | Review or audit | Run `tg_audit.py`, confirm each lead by reading code, report by severity. | `quality.md`, `security.md` |
 
 Ask a question only when the answer changes what you build and the code cannot tell you. A missing bot token blocks live testing, not implementation.
 
-Keep the project's stack. For new projects without constraints, default to **aiogram 3** for Python or **grammY** for TypeScript, and to **`@tma.js/sdk`** or the plain `telegram-web-app.js` script for Mini Apps. Size the architecture to the bot: a 200-line utility bot needs no queue, Redis, or service layer.
+Keep the project's stack. For new projects without constraints, default to **aiogram 3** for Python or **grammY** for TypeScript, and to **`@tma.js/sdk`** or the plain `telegram-web-app.js` script for Mini Apps. Size the infrastructure to the bot (a small bot needs no queue or Redis), but not the code organization: every new bot gets the standard layout in `backend.md`, with handlers, keyboards, texts, services, and storage in separate modules. Never ship a flat folder of mixed files.
 
 ## 2. Choose the surface
 
@@ -72,7 +72,7 @@ Ordered by cost of getting them wrong.
 **Experience**
 
 13. **Update the current screen instead of stacking new messages,** and give each screen one clear next step and a way out. Expired or invalid actions must recover, not fail silently.
-14. **Write each message for its job.** Lead with the result or the decision. No welcome banners, emoji bullets, divider lines, or all-caps headers. There is no universal template.
+14. **Format every screen in rich HTML by default.** A bold title with one meaningful icon, a status line, bold labels with values, `code` for IDs, a blockquote for hints, an expandable blockquote for details, and a rich message for long structured content when the stack supports it (`messages.md`). Plain unformatted text is a defect. Lead with the result; no welcome banners, emoji on every line, divider lines, or all-caps headers.
 15. **Mini Apps should feel like Telegram.** Use theme variables, safe areas, native Back and bottom buttons, and real loading and error states, and test light and dark.
 
 ## 4. Load only what the task needs
@@ -138,4 +138,4 @@ Mentioning the gate or copying its files is not validation. Skip it for changes 
 
 Never present L1 or L2 as L3. A browser screenshot with `webapp_mock.js` shows layout, not Telegram behavior. Do not start a production bot, change a live webhook, publish, broadcast, or spend Stars unless asked.
 
-End with: what the user can now do; files changed; how to run it; BotFather or environment steps the owner must do by hand; what was verified at which level; and what was not verified.
+End with: what the user can now do; the project tree; files changed; how to run it; BotFather or environment steps the owner must do by hand; what was verified at which level; and what was not verified.

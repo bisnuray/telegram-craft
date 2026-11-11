@@ -1,6 +1,6 @@
 # Message design
 
-Use when writing or rewriting visible text. A chat message has no layout engine: hierarchy comes from word order, line breaks, and sparing bold.
+Use when writing or rewriting visible text. A chat message has no layout engine, so hierarchy comes from HTML formatting: a titled, iconed header, bold labels, code, and blockquotes. Every screen uses the default rich style below unless the user asks otherwise.
 
 ## Principles
 
@@ -11,20 +11,40 @@ Use when writing or rewriting visible text. A chat message has no layout engine:
 - **Use the user's words.** "Your order", not "entity" or "record". No enum names, HTTP codes, or stack traces.
 - **Keep every fact when rewriting**: prices, dates, limits, legal text, placeholders, and locale keys.
 
-## Formatting
+## Default screen style: rich HTML
 
-| Device | Use for | Avoid |
-|---|---|---|
-| Bold | One title or the key value | Whole sentences |
-| Blank line | Separating groups | Between every line |
-| `Label: value` lines | Up to about 6 facts | Long prose as label/value |
-| `code` | Copyable IDs, keys, addresses | Decoration or alignment |
-| Blockquote, expandable | Secondary detail | The main message |
-| Rich message | Real tables, sections | Short replies |
+Send every message and edit with HTML parse mode (aiogram and python-telegram-bot `parse_mode="HTML"`, grammY `parse_mode: "HTML"`, Telethon `parse_mode="html"`). Plain unformatted text is a defect, except for one-line toasts and callback answers.
 
-**Emoji** carry meaning or they go. One status marker can help (✅ for done, ⚠️ for a warning needing action). Do not start each line with one, or use them as bullets or in headings as decoration. Bots in serious contexts (finance, health, admin tools) may need none.
+```
+📡 <b>Media relay</b>
+🟢 Running · 3 sources
 
-Avoid decorative dividers (`━━━`, `═══`), ALL-CAPS labels, runs of `!`, centering with spaces, and invented ASCII tables. On phones, monospace grids wrap unpredictably.
+<b>Target:</b> Daily Clips
+<b>Sources:</b>
+• Travel group
+• Photo drops
+• <code>-1001234567890</code>
+
+<blockquote>New photos and videos from the sources are copied to the target within seconds.</blockquote>
+```
+
+| Part | How |
+|---|---|
+| Title | First line: one emoji that names the screen, then the title in bold. The same icon on every visit. |
+| Status | Second line when the screen has a state: one marker (🟢 running, ⏸ paused, ⚪ not set up, ⚠️ needs action, ✅ done) and a few words. |
+| Facts | `<b>Label:</b> value`, one per line, grouped with blank lines. |
+| Lists | `•` bullets, up to about 10 items; paginate beyond that. |
+| Copyable values | `<code>` for IDs, usernames, commands, keys. |
+| Hints and explanations | `<blockquote>` at the end of the screen. |
+| Details, logs, long help | `<blockquote expandable>`, so the screen stays short. |
+| Links | `<a href="...">` with meaningful text, never a bare URL in a sentence. |
+| Dates and times | `<tg-time>` where supported, otherwise one consistent format. |
+| Long structured content (tables, reports, help pages, more than about 15 lines) | A rich message (`sendRichMessage`, `formatting.md`) when the library or a raw API call supports it; otherwise HTML with an expandable blockquote. |
+| Buttons | An icon on the main action and on navigation is fine (`⚙️ Settings`, `‹ Back`); `style` per `keyboards.md`. |
+
+Escape every dynamic value. Check the installed library's HTML support before using a tag: Telethon's parser handles `b i u s code pre a blockquote`; if `expandable` or `tg-time` is missing in the installed version, fall back to a plain blockquote or a formatted date.
+
+**Rich, not noisy.** Icons go on the title, the status, and buttons, not on every line. No decorative dividers (`━━━`), ALL-CAPS labels, runs of `!`, bold whole sentences, centering with spaces, or ASCII tables (phones wrap monospace). Serious contexts (finance, health, admin) keep the structure and may drop the title icon.
 
 ## Patterns by job
 
@@ -43,11 +63,13 @@ here to help you with all your conversion needs!
 ```
 After:
 ```
+🎧 <b>Audio converter</b>
+
 Send a video and I'll turn it into an MP3 or a voice message.
 
-Files up to 20 MB.
+<blockquote>Files up to 20 MB.</blockquote>
 ```
-Why: it states what to do and the one limit that will bite. Buttons, if any, carry the rest.
+Why: a titled screen that states what to do and the one limit that will bite. Buttons, if any, carry the rest.
 
 ### Status and progress
 
@@ -94,7 +116,7 @@ Buttons: `Delete report` / `Keep report`. Avoid `Yes` / `No` and "Are you sure?"
 ### Lists and details
 
 ```
-<b>Orders</b> · 12 open
+📦 <b>Orders</b> · 12 open
 
 #1042  Waiting for payment
 #1041  Shipped 3 Mar
