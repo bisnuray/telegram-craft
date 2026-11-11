@@ -82,6 +82,7 @@ The MTProto `rich_message` field is in Telethon's schema but not yet in the publ
 - Set `skip_entity_detection` when showing user-written text.
 - Media in a rich message is a block (`<figure>`, `<tg-collage>`); files come from HTTPS URLs or `tg://photo?id=` links plus the `media` field. Media captions and albums stay regular messages.
 - Callback answers, toasts, and one-line replies inside a flow stay regular messages.
+- Put navigation in `reply_markup`. `<tg-button>` inside the content suits a button tied to one block (a row in a table, a section). The quality gate checks both, but its `press()` taps only `reply_markup` buttons; reach in-content buttons in tests with `callback(data)`.
 
 ## Streaming drafts (private chats)
 

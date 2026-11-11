@@ -35,7 +35,7 @@ The Node gate needs Python 3 on the path, because all three frameworks share one
 
 ## What fails, and what does not
 
-**Errors fail the run.** Examples: text over limits, invalid HTML or MarkdownV2, empty labels, `callback_data` over 64 bytes, invalid keyboard structures, reply-keyboard misuse, Mini App buttons without HTTPS or outside private chats, invalid Stars invoices, unanswered callbacks, and handler exceptions.
+**Errors fail the run.** Examples: text over limits, invalid HTML or MarkdownV2, empty labels, `callback_data` over 64 bytes, invalid keyboard structures, reply-keyboard misuse, Mini App buttons without HTTPS or outside private chats, invalid Stars invoices, rich messages without exactly one of `html`, `markdown`, `blocks` or over 32,768 characters, unanswered callbacks, and handler exceptions. Rich screens (`sendRichMessage`, and `editMessageText` with `rich_message`) get the same keyboard checks and coverage as text screens, including `<tg-button>` callbacks inside the content.
 
 **Warnings are reported only.** Examples: emoji overload, decorative separators, weak hierarchy, generic labels, repeated wording, and callbacks that stack new menus. Use judgment.
 

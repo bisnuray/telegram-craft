@@ -399,6 +399,10 @@ def lint_screen(screen: dict[str, Any]) -> list[dict[str, str]]:
     is_caption = "caption" in screen and "text" not in screen or kind == "caption"
     raw = screen.get("caption" if "caption" in screen else "text")
     markup = screen.get("reply_markup") or screen.get("keyboard") and {"inline_keyboard": screen["keyboard"]}
+    if not isinstance(raw, str) and "rich_message" in screen:
+        check_rich(screen.get("rich_message"), add)
+        lint_markup(markup, add, str(screen.get("chat_type") or ""), str(screen.get("method") or "sendRichMessage"))
+        return findings
     if not isinstance(raw, str):
         if is_caption:
             raw = ""
@@ -569,6 +573,7 @@ def lint_call(method: str, params: dict[str, Any], location: str, chat_type: str
     if method in TEXT_METHODS or method == "sendMessageDraft":
         if method == "editMessageText" and "rich_message" in params and "text" not in params:
             check_rich(params.get("rich_message"), add)
+            lint_markup(params.get("reply_markup"), add, chat_type, method)
             return findings
         kind = "draft" if method == "sendMessageDraft" else ""
         return lint_screen({**common, "text": params.get("text"), "parse_mode": params.get("parse_mode"), "entities": params.get("entities"), "kind": kind})
@@ -622,6 +627,41 @@ def check_rich(rich: Any, add) -> None:
     for field in ("html", "markdown"):
         if isinstance(rich.get(field), str) and utf16_len(rich[field]) > RICH_LIMIT:
             add("error", "length", f"rich message source exceeds {RICH_LIMIT} characters")
+    for data in rich_callbacks(rich):
+        size = len(data.encode("utf-8"))
+        if not 1 <= size <= CALLBACK_DATA_LIMIT:
+            add("error", "callback-bytes", f"rich message button data {data[:30]!r} is {size} bytes (limit 1-{CALLBACK_DATA_LIMIT})")
+
+
+TG_BUTTON_RE = re.compile(r"<tg-button\b([^>]*)>", re.IGNORECASE)
+ATTR_RE = re.compile(r"""([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+
+
+def rich_callbacks(rich: Any) -> list[str]:
+    """callback_data of buttons placed inside a rich message (<tg-button type="callback_data"> or blocks)."""
+    found: list[str] = []
+    if not isinstance(rich, dict):
+        return found
+    for field in ("html", "markdown"):
+        source = rich.get(field)
+        if not isinstance(source, str):
+            continue
+        for match in TG_BUTTON_RE.finditer(source):
+            attrs = {m.group(1).lower(): unescape(m.group(2) if m.group(2) is not None else m.group(3)) for m in ATTR_RE.finditer(match.group(1))}
+            if attrs.get("type") == "callback_data" and "data" in attrs:
+                found.append(attrs["data"])
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if isinstance(node.get("callback_data"), str):
+                found.append(node["callback_data"])
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+    walk(rich.get("blocks"))
+    return found
 
 
 def load_capture(path: Path) -> list[dict[str, Any]]:
@@ -709,6 +749,8 @@ def offered_callbacks(call: dict[str, Any]) -> list[str]:
         for button in row if isinstance(row, list) else []:
             if isinstance(button, dict) and button.get("callback_data"):
                 found.append(str(button["callback_data"]))
+    params = normalize_params(call.get("params", {}))
+    found += rich_callbacks(params.get("rich_message"))
     return found
 
 
@@ -857,7 +899,7 @@ def lint_capture(interactions: list[dict[str, Any]]) -> list[dict[str, str]]:
         if item.get("kind") == "callback":
             if "answerCallbackQuery" not in methods:
                 findings.append({"screen": where, "level": "error", "code": "callback-unanswered", "message": f"{trigger} was never answered, so the button keeps spinning"})
-            sent_keyboard = any(c.get("method") == "sendMessage" and offered_callbacks(c) for c in calls)
+            sent_keyboard = any(c.get("method") in ("sendMessage", "sendRichMessage") and offered_callbacks(c) for c in calls)
             if sent_keyboard and not any(m.startswith("edit") for m in methods):
                 findings.append({"screen": where, "level": "warning", "code": "callback-new-message", "message": f"{trigger} sent a new menu instead of editing the current message"})
         elif item.get("kind") in ("command", "text") and not calls and not item.get("expected_silence"):
