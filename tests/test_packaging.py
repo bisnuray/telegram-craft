@@ -1,7 +1,6 @@
 """Release metadata stays consistent across the skill and the Claude Code marketplace manifest."""
 import json
 import re
-
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent

@@ -55,9 +55,9 @@ def fetch(page: str, fresh: bool = False) -> str:
     cached = cache_dir() / (hashlib.sha256(url.encode()).hexdigest() + ".md")
     if not fresh and cached.exists() and time.time() - cached.stat().st_mtime < CACHE_TTL_SECONDS:
         return cached.read_text(encoding="utf-8")
-    request = urllib.request.Request(url, headers={"User-Agent": "tgdocs/1.0"})
+    request = urllib.request.Request(url, headers={"User-Agent": "tgdocs/1.0"})  # noqa: S310 - fixed https URL
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 - fixed https://core.telegram.org URL
             body = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         if exc.code == 404:

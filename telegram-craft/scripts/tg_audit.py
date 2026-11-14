@@ -110,6 +110,10 @@ def credential_leads(root: Path, sources: dict[str, str]) -> list[Lead]:
                 for match in API_HASH_RE.finditer(text):
                     if len(set(match.group(1))) > 4:
                         leads.append(Lead("high", "api-hash-in-source", rel, text[: match.start()].count("\n") + 1, "api_hash is hard-coded; load it from the environment or a secret manager"))
+        if rel.rsplit("/", 1)[-1].startswith("Dockerfile"):
+            for match in IMAGE_SECRET_RE.finditer(text):
+                leads.append(Lead("high", "secret-in-image", rel, text[: match.start()].count("\n") + 1,
+                                  f"{match.group(2)} in {match.group(1)} is baked into the image layers; pass it at runtime as a secret"))
     rules = ignore_rules(root)
     for rel in session_files(root):
         if not session_ignored(rel, rules):
@@ -118,6 +122,9 @@ def credential_leads(root: Path, sources: dict[str, str]) -> list[Lead]:
     if uses_mtproto and not session_ignored("x.session", rules):
         leads.append(Lead("medium", "session-not-ignored", ".gitignore", 1, "MTProto project without a *.session rule; run scripts/secure_mtproto_project.py"))
     return leads
+
+
+IMAGE_SECRET_RE = re.compile(r"(?im)^\s*(ENV|ARG)\s+([A-Z0-9_]*(?:SESSION|API_HASH|TOKEN|SECRET)[A-Z0-9_]*)\b")
 
 
 @dataclass
@@ -153,6 +160,16 @@ def own_nodes(function: ast.AST):
             stack.extend(ast.iter_child_nodes(node))
 
 
+def awaits_cancelled_task(function, handler_try):
+    """try: await task / except CancelledError, right after task.cancel(): the standard stop() idiom."""
+    body = handler_try.body
+    if len(body) != 1 or not isinstance(body[0], ast.Expr) or not isinstance(body[0].value, ast.Await):
+        return False
+    target = ast.unparse(body[0].value.value)
+    return any(isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "cancel" and ast.unparse(n.func.value) == target
+               for n in ast.walk(function))
+
+
 class PythonScan:
     def __init__(self, rel: str, source: str, tree: ast.Module, project_text: str) -> None:
         self.rel = rel
@@ -165,6 +182,8 @@ class PythonScan:
         self.leads.append(Lead(severity, rule, self.rel, line, message))
 
     def run(self) -> list[Lead]:
+        self.stop_idioms = {id(h) for f in ast.walk(self.tree) if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+                            for tr in ast.walk(f) if isinstance(tr, ast.Try) and awaits_cancelled_task(f, tr) for h in tr.handlers}
         for node in ast.walk(self.tree):
             if isinstance(node, ast.AsyncFunctionDef):
                 self.check_async(node)
@@ -212,9 +231,34 @@ class PythonScan:
             if "telegram_payment_charge_id" not in self.project_text:
                 self.add("high", "payment-no-charge-id", function.lineno, f"{function.name} handles successful_payment without telegram_payment_charge_id: no dedupe key, no refund path")
 
+    def is_setup_script(self) -> bool:
+        return bool(SETUP_SCRIPT.search(self.rel))
+
+    def check_mtproto_call(self, call: ast.Call, name: str, leaf: str) -> None:
+        if "TelegramClient" not in self.source and "telethon" not in self.source:
+            return
+        if leaf == "StringSession" and call.args and self.may_be_empty(call.args[0]):
+            self.add("high", "empty-string-session", call.lineno, "StringSession from a value that may be empty; an unset variable becomes a new login. Fail when it is missing")
+        if self.is_setup_script():
+            return
+        if leaf == "start" and "client" in name.lower() and not call_has(call, "bot_token"):
+            self.add("high", "user-client-start", call.lineno, f"{name}() prompts for a phone number when the session is not authorized; use connect() and is_user_authorized()")
+        if leaf == "log_out":
+            self.add("high", "log-out", call.lineno, "log_out() revokes the session; shutdown should only disconnect()")
+
+    @staticmethod
+    def may_be_empty(node: ast.AST) -> bool:
+        if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+            return any(isinstance(v, ast.Constant) and not v.value for v in node.values)
+        if isinstance(node, ast.Call) and dotted(node.func) in ("os.environ.get", "os.getenv", "environ.get", "getenv"):
+            default = node.args[1] if len(node.args) > 1 else next((k.value for k in node.keywords if k.arg == "default"), None)
+            return default is None or isinstance(default, ast.Constant) and not default.value
+        return False
+
     def check_call(self, call: ast.Call) -> None:
         name = dotted(call.func)
         leaf = name.rsplit(".", 1)[-1]
+        self.check_mtproto_call(call, name, leaf)
         if call_has(call, "shell") and any(k.arg == "shell" and isinstance(k.value, ast.Constant) and k.value.value is True for k in call.keywords):
             self.add("high", "shell-true", call.lineno, f"{name}(shell=True) risks command injection from user file names or URLs")
         if leaf == "create_subprocess_shell" or name == "os.system":
@@ -282,12 +326,16 @@ class PythonScan:
 
     def check_except(self, handler: ast.ExceptHandler) -> None:
         type_name = dotted(handler.type) if handler.type is not None else ""
-        if type_name.endswith("TelegramRetryAfter") or type_name.endswith("RetryAfter"):
+        if type_name.endswith(("TelegramRetryAfter", "RetryAfter")):
             body = "\n".join(ast.get_source_segment(self.source, n) or "" for n in handler.body)
             if "retry_after" not in body:
                 self.add("medium", "retry-after-ignored", handler.lineno, "429 handler does not wait for the server-provided retry_after")
         if type_name in ("", "Exception", "BaseException") and len(handler.body) == 1 and isinstance(handler.body[0], ast.Pass):
             self.add("medium", "swallowed-exception", handler.lineno, "exception swallowed silently; the user gets no reply and logs show nothing")
+        caught = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+        catches_cancel = handler.type is None or any(dotted(c) == "BaseException" or dotted(c).endswith("CancelledError") for c in caught)
+        if catches_cancel and not any(isinstance(n, ast.Raise) for n in ast.walk(handler)) and id(handler) not in self.stop_idioms:
+            self.add("high", "swallowed-cancellation", handler.lineno, "catches CancelledError without re-raising; shutdown hangs and tasks never stop")
 
     def check_import(self, node: ast.AST) -> None:
         module = getattr(node, "module", "") or ""
@@ -317,6 +365,7 @@ JS_RULES: list[tuple[str, str, re.Pattern[str], str]] = [
     ("medium", "shell-exec", re.compile(r"\bexec(?:Sync)?\(\s*`[^`]*\$\{"), "shell command built from a template; use execFile with an argv list"),
 ]
 UNSAFE_SEND = re.compile(r"initDataUnsafe[^;\n]*(fetch|axios|body|headers|JSON\.stringify)|(fetch|axios|body|headers|JSON\.stringify)[^;\n]*initDataUnsafe")
+SETUP_SCRIPT = re.compile(r"(?i)(^|/)(tools/|scripts/)|login|create_session|session_gen|make_session|provision")
 UNSAFE_ID = re.compile(r"initDataUnsafe\??\.user\??\.id")
 BOT_API_CALL = re.compile(r"api\.telegram\.org/bot")
 CLIENT_PATH = re.compile(r"(^|/)(webapp|web-app|frontend|client|public|miniapp|mini-app|src/(components|pages|app))(/|$)", re.I)
@@ -370,7 +419,7 @@ def collect(root: Path) -> dict[str, str]:
         subdirs[:] = [d for d in subdirs if d not in SKIP_DIRS]
         for name in files:
             path = Path(directory) / name
-            if path.suffix not in TEXT_SUFFIXES | {".css", ".scss"} and not name.startswith(".env"):
+            if path.suffix not in TEXT_SUFFIXES | {".css", ".scss"} and not name.startswith((".env", "Dockerfile")):
                 continue
             try:
                 if path.is_symlink() or path.stat().st_size > MAX_BYTES:
@@ -402,8 +451,8 @@ def audit(root: Path) -> list[Lead]:
     scan_project_signals(root, sources, leads)
     leads.extend(credential_leads(root, sources))
     order = {"high": 0, "medium": 1, "low": 2}
-    unique = {(l.rule, l.path, l.line): l for l in leads}
-    return sorted(unique.values(), key=lambda l: (order[l.severity], l.path, l.line))
+    unique = {(lead.rule, lead.path, lead.line): lead for lead in leads}
+    return sorted(unique.values(), key=lambda lead: (order[lead.severity], lead.path, lead.line))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -418,7 +467,7 @@ def main(argv: list[str] | None = None) -> int:
     leads = audit(root)
     high = sum(lead.severity == "high" for lead in leads)
     if args.json:
-        print(json.dumps({"high": high, "total": len(leads), "leads": [asdict(l) for l in leads]}, indent=2))
+        print(json.dumps({"high": high, "total": len(leads), "leads": [asdict(lead) for lead in leads]}, indent=2))
     else:
         for lead in leads:
             print(f"{lead.severity:6} {lead.path}:{lead.line} [{lead.rule}] {lead.message}")

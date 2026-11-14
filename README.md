@@ -39,9 +39,10 @@ Telegram projects usually fail in three ways: API calls written from memory, a c
 | **Bot API bots** (aiogram, python-telegram-bot, pyTelegramBotAPI, grammY, Telegraf, raw API) | Messages and `/start` flows, rich message screens in one standard style (bordered tables, no emoji clutter, a recipe per screen type), inline keyboards and navigation, button styles, widgets (10.4), FSM, webhooks, rate limits, broadcasts, groups and moderation |
 | **Telegram Stars** | Invoices, subscriptions, refunds, granting on `successful_payment` exactly once |
 | **Mini Apps** | Server-side `initData` validation, theme, safe areas, native buttons, loading states, accessibility |
-| **MTProto clients** (Telethon, Pyrogram forks such as kurigram) | Bot and user sessions, sign-in, `FloodWait`, reconnects, entity caching, takeout, session security, authorization boundaries |
+| **MTProto clients** (Telethon, Pyrogram forks such as kurigram) | User accounts run from an existing `StringSession` (no login prompts at startup, clear failure when it is missing or revoked), one-time sign-in script, bot sessions, `FloodWait`, reconnects, entity caching, session security, authorization boundaries |
 | **Hybrid apps** | Bot API interface with an MTProto worker for large files or history, kept separate |
 | **Media** | ffmpeg jobs, size limits, `file_id` caching, progress, cleanup |
+| **Code quality** | Design sized to the product, comments that explain why (never narration), narrow error handling, owned async tasks with timeouts and clean shutdown, and a curated Ruff config |
 
 It sizes the process to the job. A one-line fix stays a one-line fix. A new bot starts with a screen map and one working flow.
 
@@ -53,8 +54,9 @@ It sizes the process to the job. A one-line fix stays a one-line fix. A new bot 
 | **Coverage report** | Separates *confirmed* gaps (a registered handler that never ran, a button the code builds but no test ever showed) from *possible* ones found by a source scan. It never claims full coverage because every visible button was pressed. |
 | **`update_delivery.py`** | Inbox with leased claims, outbox, 429 handling, per-chat lanes, resumable broadcasts. `--self-test` checks 9 guarantees, each against a deliberately broken variant. |
 | **`secure_mtproto_project.py`** | Adds missing `.gitignore` rules for `.session` files and `.env`, adds a CI job that fails on a committed session, and reports leaked session strings. It never deletes or revokes anything. |
+| **`tg_audit.py` and Ruff** | Ruff (`assets/ruff.template.toml`) catches unused and dead code, blind or empty `except`, dropped tasks, and blocking calls in async code. `tg_audit.py` adds what Ruff cannot see: swallowed cancellation, a user client started with `start()` or logged out at runtime, `StringSession` from a possibly empty variable, and secrets baked into a Dockerfile. |
 | **`tgdocs.py`** | Reads the current official Bot API and MTProto docs, so facts are looked up, not recalled. |
-| **Assets** | Copy-and-adapt code: `rich_html.py` (rich screens, escaped by construction), `initData` validation (Python and JS), a Stars ledger, media jobs, MTProto runtime helpers with log redaction, a Mini App browser mock |
+| **Assets** | Copy-and-adapt code: `rich_html.py` (rich screens, escaped by construction), `mtproto_runtime.py` (StringSession loading and authorized connect), `create_session.py` (one-time sign-in), `initData` validation (Python and JS), a Stars ledger, media jobs, MTProto runtime helpers with log redaction, a Mini App browser mock |
 
 ## Install
 
@@ -116,7 +118,8 @@ Every handoff ends with what you can now do, the files changed, how to run it, w
 python3 telegram-craft/scripts/tgdocs.py version                       # current Bot API version
 python3 telegram-craft/scripts/tgdocs.py method sendMessage             # one method's official contract
 python3 telegram-craft/scripts/tg_lint.py screens.json                  # check messages and keyboards
-python3 telegram-craft/scripts/tg_audit.py path/to/project              # static leads for common defects
+python3 telegram-craft/scripts/tg_audit.py path/to/project              # static leads for Telegram, MTProto, and async defects
+ruff check path/to/project                                              # with the project's config, or assets/ruff.template.toml
 python3 telegram-craft/scripts/install_quality_gate.py path/to/project --framework aiogram   # or ptb, grammy
 python3 telegram-craft/scripts/secure_mtproto_project.py path/to/project --ci               # protect MTProto sessions
 python3 telegram-craft/assets/update_delivery.py --self-test           # verify the delivery guarantees
@@ -131,6 +134,7 @@ The tools and the quality gate have their own test suite, run in CI on every pus
 ```bash
 pip install -r requirements-dev.txt
 python3 tests/validate_skill.py
+ruff check .
 pytest -q
 ```
 

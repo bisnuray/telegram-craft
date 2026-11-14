@@ -31,7 +31,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from tg_audit import SESSION_FILE_SUFFIXES, SESSION_IGNORE_RULES, collect, credential_leads, ignore_rules, session_ignored  # noqa: E402
+from tg_audit import (  # noqa: E402
+    SESSION_FILE_SUFFIXES,
+    SESSION_IGNORE_RULES,
+    collect,
+    credential_leads,
+    ignore_rules,
+    session_ignored,
+)
 
 HEADER = "# Telegram MTProto credentials (added by telegram-craft)"
 WORKFLOW = """name: telegram-credentials
@@ -88,7 +95,12 @@ def tracked_session_files(root: Path) -> list[str] | None:
     done = git(root, "ls-files", "-z")
     if done is None or done.returncode != 0:
         return None
-    return sorted(name for name in done.stdout.split("\0") if name.endswith(SESSION_FILE_SUFFIXES))
+    return sorted(name for name in done.stdout.split("\0") if name.endswith(SESSION_FILE_SUFFIXES) or is_real_env_file(name))
+
+
+def is_real_env_file(name: str) -> bool:
+    base = name.rsplit("/", 1)[-1]
+    return (base == ".env" or base.startswith(".env.")) and not base.endswith((".example", ".sample", ".template"))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -120,8 +132,9 @@ def main(argv: list[str] | None = None) -> int:
     tracked = tracked_session_files(root)
     problems = [f"{lead.path}:{lead.line} [{lead.rule}] {lead.message}" for lead in leads if lead.severity == "high"]
     for name in tracked or []:
-        problems.append(f"{name} [session-file-tracked] is tracked by git. Untrack it with `git rm --cached {name}`, "
-                        "then have the owner end that session; it stays in git history until the history is rewritten")
+        rule = "env-file-tracked" if is_real_env_file(name) else "session-file-tracked"
+        problems.append(f"{name} [{rule}] is tracked by git. Untrack it with `git rm --cached {name}`, then rotate what it held "
+                        "(end the session, revoke the token); it stays in git history until the history is rewritten")
     result = {"added_rules": added, "missing_rules": missing, "problems": problems, "ci": workflow_note,
               "git": "not a git repository or git unavailable" if tracked is None else "checked"}
     if args.json:

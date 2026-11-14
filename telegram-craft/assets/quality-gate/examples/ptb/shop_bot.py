@@ -5,7 +5,15 @@ from io import BytesIO
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Update
 from telegram.constants import ParseMode
 from telegram.error import BadRequest
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, PreCheckoutQueryHandler, filters
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    PreCheckoutQueryHandler,
+    filters,
+)
 
 ITEMS = {i: (f"Template {i}", 10 + i) for i in range(1, 8)}
 PAGE_SIZE = 3

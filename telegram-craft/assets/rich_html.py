@@ -20,8 +20,8 @@ Standard library only. Run ``python3 rich_html.py --self-test`` to check it.
 from __future__ import annotations
 
 import html as _html
+from collections.abc import Iterable, Sequence
 from html.parser import HTMLParser
-from typing import Iterable, Sequence, Union
 
 __all__ = [
     "Html", "esc", "join", "b", "i", "u", "s", "code", "mark", "spoiler", "sub", "sup", "link", "time",
@@ -41,7 +41,7 @@ class Html(str):
     """Markup that is already safe. Never wrap user input in Html directly; pass it to a helper."""
 
 
-Content = Union[str, int, float, Html, None]
+Content = str | int | float | Html | None
 
 
 def esc(value: Content) -> Html:

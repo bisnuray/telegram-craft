@@ -5,14 +5,12 @@ screen carrying the Cancel button never appeared, yet every observed button was 
 """
 import asyncio
 import json
-import os
 import subprocess
 import sys
 import textwrap
 
 import pytest
-
-from test_quality_gate import KIT, PY, ENV, core, installer, load  # noqa: F401  (shares the loaded core)
+from test_quality_gate import ENV, KIT, PY, core, installer, load  # noqa: F401  (shares the loaded core)
 
 sys.path.insert(0, str(KIT / "python"))
 from tg_quality import Recorder  # noqa: E402

@@ -86,3 +86,10 @@ In scope: developing, reviewing, and operating Telegram bots and Mini Apps. Out 
 ## Maintenance model
 
 See `README.md`. In short: when a new Bot API release lands, update `platform-facts.md`, re-verify library statuses, run `pytest` and `tests/validate_skill.py`, and rerun evals whose behavior depends on what changed.
+
+## Code quality and MTProto sessions (1.2.0)
+
+- **One reference, loaded only for code work.** `references/code-quality.md` covers design size, names, comments, errors, async lifecycle, logging, and tooling. Mini App frontend specifics live in `mini-apps.md`. Telegram-only tasks never load it.
+- **Tools before prose.** Ruff (`assets/ruff.template.toml`, an explicit rule list rather than `ALL`) and `tg_audit.py` enforce what can be checked. The reference spends its words on judgment: when an abstraction is premature, what a comment must say, and where errors belong. Smell thresholds are review prompts, never limits.
+- **Comments: why, never what.** No comment counting anywhere. Narration is a review item, measured only in evaluations with a heuristic that never counts comments carrying a reason.
+- **StringSession-first user accounts.** Runtime loads an existing session from the secret environment and fails with a clear message when it is missing, malformed, or revoked. Sign-in is a separate script the owner runs. The source facts behind this (empty `StringSession` plus `start()` prompts; `log_out()` ends the session) were read from Telethon 1.45.0.

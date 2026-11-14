@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from telegram import Update
 from telegram.ext import Application, ContextTypes
@@ -12,7 +13,7 @@ from . import BaseHarness, Recorder, handler_key, record_run
 
 
 class _CaptureRequest(BaseRequest):
-    def __init__(self, harness: "PTBHarness") -> None:
+    def __init__(self, harness: PTBHarness) -> None:
         self.harness = harness
 
     @property
@@ -51,7 +52,7 @@ class PTBHarness(BaseHarness):
         if current is not None and context.error is not None:
             current["error"] = f"{type(context.error).__name__}: {context.error}"
 
-    async def __aenter__(self) -> "PTBHarness":
+    async def __aenter__(self) -> PTBHarness:
         await self.app.initialize()
         return self
 

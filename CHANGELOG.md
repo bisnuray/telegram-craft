@@ -2,6 +2,37 @@
 
 All notable changes to Telegram Craft. Versions follow `metadata.version` in `telegram-craft/SKILL.md`.
 
+## 1.2.0 (2026-11-14)
+
+### Added
+- **Code-quality standard** (`references/code-quality.md`), loaded for Python code work. It covers:
+  - design sized to the product, with no one-implementation abstractions, placeholders, or dead code;
+  - names, and review signals instead of hard limits;
+  - comments that explain why, never narrate, with Telegram-specific examples; existing context comments are kept;
+  - narrow error handling with one error boundary, and no swallowed cancellation or fake success;
+  - async lifecycle: owned tasks, timeouts, bounded retries, and shutdown order;
+  - logging without secrets;
+  - a review checklist and a table of rationalizations to reject.
+- **Curated Ruff config** (`assets/ruff.template.toml`) with an explicit rule list mapped to defect classes.
+- **StringSession-first MTProto runtime**:
+  - `string_session_from_env()` refuses missing, empty, or malformed sessions instead of starting a new login;
+  - `connect_authorized()` connects, verifies authorization, and never prompts;
+  - `assets/create_session.py` is the one-time sign-in the owner runs, writing a mode-0600 file;
+  - guidance for revocation, `AUTH_KEY_DUPLICATED`, and rotation.
+- **`tg_audit.py` leads**: `swallowed-cancellation`, `empty-string-session`, `user-client-start`, `log-out`, and `secret-in-image` (Dockerfile `ENV`/`ARG`). `secure_mtproto_project.py` also reports a real `.env` tracked by git.
+- **Mini App frontend code** guidance in `mini-apps.md`: strict TypeScript, validated responses, effect cleanup, and request states.
+
+- `LIVE_TEST_PLAN.md` stage 5 validates the StringSession runtime: one-time sign-in, prompt-free restart, and a clean exit after the session is ended.
+
+### Changed
+- New bots get a layout sized to the product: a small package for a utility bot, the full layout for a product bot. SKILL.md rules 16 to 18 cover code quality, error and task ownership, and MTProto sessions.
+- The repository lints itself with the same Ruff rules in CI. Fixed:
+  - a silent `except Exception: pass` in `assets/update_delivery.py`, which now logs;
+  - an unused loop variable;
+  - ambiguous names;
+  - regex call style.
+- Copy-and-adapt assets keep `asyncio.TimeoutError` and `timezone.utc`, so they still run on Python 3.10.
+
 ## 1.1.0 (2026-11-11)
 
 ### Added

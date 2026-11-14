@@ -5,7 +5,15 @@ from io import BytesIO
 from aiogram import Dispatcher, F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
-from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, Message, PreCheckoutQuery
+from aiogram.types import (
+    BufferedInputFile,
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    LabeledPrice,
+    Message,
+    PreCheckoutQuery,
+)
 
 ITEMS = {i: (f"Template {i}", 10 + i) for i in range(1, 8)}
 PAGE_SIZE = 3

@@ -1,0 +1,14 @@
+# Lints this repository with the same rules the skill recommends (telegram-craft/assets/ruff.template.toml).
+extend = "telegram-craft/assets/ruff.template.toml"
+extend-exclude = ["_private", "evals/fixtures"]  # fixtures are deliberately flawed inputs for evaluations
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S108", "T20", "E402", "C901"]
+"evals/**" = ["S101", "T20", "S310", "C901"]
+"telegram-craft/scripts/**" = ["T20", "C901", "SIM102"]  # CLI tools print; rule tables are branchy; nested ifs read better than long merged conditions
+"telegram-craft/assets/create_session.py" = ["T20", "UP041", "UP017"]  # talks to the operator
+"telegram-craft/assets/update_delivery.py" = ["T20", "UP041", "UP017"]  # its --self-test reports on stdout
+"telegram-craft/assets/rich_html.py" = ["S101", "T20", "UP041", "UP017"]  # --self-test asserts and reports
+"telegram-craft/assets/quality-gate/examples/**" = ["S101", "C901"]  # example tests; handlers nested in one builder
+"telegram-craft/assets/*.py" = ["UP041", "UP017"]  # copy-and-adapt assets keep asyncio.TimeoutError and timezone.utc so they also run on Python 3.10
+

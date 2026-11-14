@@ -32,6 +32,7 @@ Otherwise the original description stays.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import hashlib
 import json
@@ -45,7 +46,7 @@ import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 SKILL_NAME = "telegram-craft"
@@ -88,10 +89,8 @@ def group_members(pgid: int) -> list[tuple[int, int]]:
 def stop_group(process: subprocess.Popen, pgid: int) -> list[int]:
     """Stop only our child's process group. Return any pids that survived."""
     for sig, wait in ((signal.SIGTERM, 5), (signal.SIGKILL, 5)):
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(pgid, sig)
-        except ProcessLookupError:
-            pass
         deadline = time.time() + wait
         while time.time() < deadline:
             process.poll()
@@ -351,7 +350,7 @@ def run(args) -> int:
             "trial": trial["trial"], "variant": trial["variant"], "case": trial["case"]["id"],
             "set": trial["case"]["set"], "should_trigger": trial["case"]["should_trigger"],
             "short": trial["case"]["short"], "category": trial["case"]["category"], "skill_md_hash": hashes[trial["variant"]], "model": args.model,
-            "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), **result,
+            "at": datetime.now(UTC).isoformat(timespec="seconds"), **result,
         })
         ran += 1
         attempts[trial["trial"]] = attempts.get(trial["trial"], 0) + 1
@@ -386,7 +385,7 @@ def sign_test(wins: int, losses: int) -> float:
     n = wins + losses
     if not n:
         return 1.0
-    return min(1.0, 2 * sum(math.comb(n, k) for k in range(0, min(wins, losses) + 1)) / 2**n)
+    return min(1.0, 2 * sum(math.comb(n, k) for k in range(min(wins, losses) + 1)) / 2**n)
 
 
 def fmt(hits: int, total: int) -> str:
@@ -408,7 +407,8 @@ def report(args) -> int:
     for record in records:
         if record["outcome"] == "invalid":
             print("  invalid:", record["trial"], record["reason"])
-    pick = lambda variant, **kw: [r for r in rows if r["variant"] == variant and all(r[k] == v for k, v in kw.items())]
+    def pick(variant, **kw):
+        return [r for r in rows if r["variant"] == variant and all(r[k] == v for k, v in kw.items())]
     segments = [
         ("Should trigger, all", dict(should_trigger=True)),
         ("Should trigger, held-out", dict(should_trigger=True, set="holdout")),
@@ -444,7 +444,8 @@ def report(args) -> int:
     v1p, v2p = rate(pick("v1", should_trigger=True)), rate(pick("v2", should_trigger=True))
     v1h, v2h = rate(pick("v1", should_trigger=True, set="holdout")), rate(pick("v2", should_trigger=True, set="holdout"))
     v1n, v2n = rate(pick("v1", should_trigger=False)), rate(pick("v2", should_trigger=False))
-    tp = lambda pair: pair[0] / pair[1] if pair[1] else 0.0
+    def tp(pair):
+        return pair[0] / pair[1] if pair[1] else 0.0
     per_variant = planned / 2
     checks = {
         "1 valid >= 90% for each": min(len(pick("v1")), len(pick("v2"))) >= 0.9 * per_variant,

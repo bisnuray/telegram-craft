@@ -15,20 +15,21 @@ SKIPPED_EVENTS = {"update", "error"}  # the dispatcher's own update listener, an
 
 
 class _CaptureSession(BaseSession):
-    def __init__(self, harness: "AiogramHarness") -> None:
+    def __init__(self, harness: AiogramHarness) -> None:
         super().__init__()
         self.harness = harness
 
     async def close(self) -> None:
         return None
 
-    async def make_request(self, bot: Bot, method: Any, timeout: Any = None) -> Any:
+    async def make_request(self, bot: Bot, method: Any, timeout: Any = None) -> Any:  # noqa: ASYNC109 - aiogram's BaseSession signature
         params = _plain(bot, method.model_dump(warnings=False))
         body = self.harness.handle_call(method.__api_method__, params)
         status = 200 if body["ok"] else body["error_code"]
         return self.check_response(bot=bot, method=method, status_code=status, content=json.dumps(body)).result
 
-    async def stream_content(self, url: str, headers: Any = None, timeout: int = 30, chunk_size: int = 65536, raise_for_status: bool = True):
+    async def stream_content(self, url: str, headers: Any = None, timeout: int = 30,  # noqa: ASYNC109 - aiogram's BaseSession signature
+                              chunk_size: int = 65536, raise_for_status: bool = True):
         yield self.harness.file_bytes
 
 

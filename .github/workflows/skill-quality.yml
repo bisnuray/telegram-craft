@@ -18,6 +18,8 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: npm install --prefix "$RUNNER_TEMP/node" --no-audit --no-fund grammy@1.46.0
       - run: python tests/validate_skill.py
+      - name: Lint (the rules the skill recommends)
+        run: ruff check .
       - name: Tests (sequential)
         run: pytest -q
         env:

@@ -4,7 +4,18 @@ Use for structure, data, state, background work, and operations. Size infrastruc
 
 ## Project layout
 
-Every new bot uses a package organized by role. A single file is acceptable only for a throwaway script under about 150 lines that the user asked for as one file.
+Organize by role, at the size the product needs. A utility bot (one or two commands, no storage) is a small package:
+
+```
+splitbot/
+  splitbot/
+    __main__.py      # handlers and startup
+    money.py         # the logic, testable without Telegram
+  tests/
+  .env.example  .gitignore  requirements.txt  README.md
+```
+
+A product bot (several flows, storage, payments, workers) uses the full layout below. Grow into it when the second flow or the storage arrives; do not create empty packages ahead of need. A single file is acceptable only for a throwaway script the user asked for as one file.
 
 ```
 mybot/                     # project root
@@ -19,7 +30,7 @@ mybot/                     # project root
     services/              # business rules and authorization, no Telegram types
     storage/               # database access and migrations
     workers/               # background jobs (media, broadcasts), if any
-  tools/                   # one-off operator tools, e.g. login.py for an MTProto session
+  tools/                   # one-off operator tools, e.g. create_session.py for an MTProto session
   tests/                   # mirrors app/: test_handlers_*, test_services_*
   var/                     # runtime data: sessions/, downloads/, db, logs (git-ignored)
   .env.example             # every variable with a comment, no real values
@@ -39,7 +50,7 @@ app/
   services/       # shared rules, used by both
   storage/
   __main__.py     # starts both clients under one supervisor
-tools/login.py    # interactive session creation, never run by the service
+tools/create_session.py  # one-time sign-in from assets/create_session.py, never run by the service
 ```
 
 Rules that hold at every size:

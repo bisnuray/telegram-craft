@@ -328,7 +328,8 @@ class TestAiogramAdapter:
         from aiogram import Dispatcher, F
         from aiogram.client.default import DefaultBotProperties
         from aiogram.filters import CommandStart
-        from aiogram.types import InlineKeyboardButton as B, InlineKeyboardMarkup as K
+        from aiogram.types import InlineKeyboardButton as B
+        from aiogram.types import InlineKeyboardMarkup as K
         from tg_quality.aiogram_adapter import AiogramHarness
 
         dispatcher = Dispatcher()
@@ -407,7 +408,8 @@ class TestAiogramAdapter:
 class TestPTBAdapter:
     def test_captures_real_payload(self):
         pytest.importorskip("telegram")
-        from telegram import InlineKeyboardButton as B, InlineKeyboardMarkup as K
+        from telegram import InlineKeyboardButton as B
+        from telegram import InlineKeyboardMarkup as K
         from telegram.ext import CallbackQueryHandler, CommandHandler
         from tg_quality.ptb_adapter import PTBHarness
 

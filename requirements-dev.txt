@@ -7,3 +7,4 @@ pytest-asyncio
 pytest-cov
 pyyaml
 aiosqlite
+ruff==0.17.5

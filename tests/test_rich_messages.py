@@ -3,7 +3,8 @@ import json
 import subprocess
 import sys
 
-from test_quality_gate import SKILL, core as lint
+from test_quality_gate import SKILL
+from test_quality_gate import core as lint
 
 LINT = str(SKILL / "scripts/tg_lint.py")
 MENU = {"inline_keyboard": [[{"text": "⚙️ Settings", "callback_data": "v1:settings"}]]}

@@ -86,6 +86,17 @@ Read `themeParams` and CSS variables `--tg-theme-*` (`bg-color`, `text-color`, `
 
 Use timeouts, retry idempotent reads, and send an idempotency key on writes. Show offline and error states. On `activated`/`deactivated` (8.0+), pause polling and animation.
 
+## Frontend code
+
+Mini App code is a small production frontend. The general standard (`code-quality.md`) applies; these are the Mini App specifics.
+
+- **TypeScript in `strict` mode.** No `any` at boundaries: type API responses as `unknown`, then validate them (with the project's validator, such as zod or valibot, or a small type guard) before use. Type the `Telegram.WebApp` object once in one module, instead of `(window as any)` in every file.
+- **Identity never comes from the client.** Send the raw `initData` string and let the server validate it (Authentication, above). `initDataUnsafe` is for display only. Secrets and admin tokens never ship in the bundle.
+- **Every subscription is cleaned up.** Register `onEvent`, `MainButton.onClick`, `BackButton.onClick`, and `setInterval` inside an effect, and return the matching `offEvent` or `offClick`. Registering in a component body adds a new handler on every render, so one tap fires many times.
+- **Every request has three states:** loading, error, and data. Check `response.ok`, catch failures, cancel stale requests with `AbortController`, and show an error the user can retry.
+- **Components:** one component per screen, presentational parts split out when reused, and state kept as local as possible. Use the server-state library the project already has (TanStack Query, SWR) instead of hand-rolled caches.
+- **Tooling:** run `tsc --noEmit` and the project's ESLint config (`typescript-eslint` recommended plus `react-hooks/exhaustive-deps` in React projects). Add Prettier only if the project uses it. Do not add a second tool for a job one already does.
+
 ## Debugging
 
 - iOS: tap Settings 10 times, enable Allow Web View Inspection, and use Safari.

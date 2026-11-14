@@ -1,0 +1,28 @@
+# Ruff for a Telegram bot or MTProto service. Copy as ruff.toml in the project root, or move the tables
+# under [tool.ruff] in pyproject.toml. Each selected group catches a defect class
+# from references/code-quality.md; formatting rules are left to `ruff format`.
+target-version = "py311"
+line-length = 120
+
+[lint]
+select = [
+    "E4", "E7", "E9", "F",  # syntax errors, unused imports and variables, undefined names
+    "B",                    # likely bugs: mutable defaults, raise without from, loop closures
+    "BLE", "S",             # blind except; security: secrets, shell, try-except-pass
+    "ASYNC", "RUF006",      # blocking calls in async code, dropped tasks
+    "ERA", "PIE", "T20",    # commented-out code, placeholders, print
+    "C90", "PLW0603",       # complexity, global state
+    "SIM", "UP", "I",       # simpler constructs, modern syntax, import order
+    "G004", "LOG",          # logging with f-strings, root-logger calls
+]
+ignore = [
+    "S311",          # random is fine for retry jitter; use secrets for anything security-related
+    "S603", "S607",  # argv-list subprocess calls are the safe pattern (ffmpeg, yt-dlp); shell=True stays flagged
+]
+
+[lint.mccabe]
+max-complexity = 12
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]  # asserts and fake tokens are the point of tests
+"tools/**" = ["T20"]                   # setup scripts talk to the operator

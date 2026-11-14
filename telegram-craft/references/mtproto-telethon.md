@@ -4,28 +4,52 @@ Use when writing or reviewing Telethon code. Read `mtproto-foundations.md` first
 
 ## Client setup
 
+User account, the default runtime shape:
+
 ```python
+import asyncio
 import os
+import sys
 
 from telethon import TelegramClient
-from telethon.sessions import StringSession
 
-client = TelegramClient(
-    StringSession(session_text),
-    int(os.environ["TG_API_ID"]),
-    os.environ["TG_API_HASH"],
-    flood_sleep_threshold=0,  # our bounded handler decides, not a hidden sleep
-    connection_retries=5,
-    auto_reconnect=True,
-    catch_up=False,
-)
+from app.mtproto_runtime import SessionUnavailable, connect_authorized, string_session_from_env
+
+
+def make_client() -> TelegramClient:
+    return TelegramClient(
+        string_session_from_env(),
+        int(os.environ["TELEGRAM_API_ID"]),
+        os.environ["TELEGRAM_API_HASH"],
+        flood_sleep_threshold=0,  # call_with_flood_control decides; a hidden sleep would stall the worker
+        connection_retries=5,
+        catch_up=False,
+    )
+
+
+async def run() -> None:
+    client = make_client()
+    await connect_authorized(client)
+    try:
+        register_handlers(client)
+        await client.run_until_disconnected()
+    finally:
+        await client.disconnect()
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(run())
+    except SessionUnavailable as error:
+        sys.exit(f"Cannot start: {error}. Create a new session with create_session.py.")
 ```
 
-Set `flood_sleep_threshold` deliberately. The default of 60 silently sleeps inside a call, which can stall a whole worker. Do not put `client.start()` with prompts in a service.
+- `flood_sleep_threshold`: the default of 60 silently sleeps inside a call, which can stall a whole worker. Set it deliberately.
+- Do not use `async with client:` or `client.start()` for a user account at runtime. Both run `start()`, which prompts for a phone number when the session is not authorized.
+- An `UnauthorizedError` (`AuthKeyUnregisteredError`, `SessionRevokedError`, `SessionExpiredError`, `UserDeactivatedError`) during the run is terminal: stop the client and exit with an alert, and do not retry or sign in again. `AuthKeyDuplicatedError` means two processes used one session; stop both and issue a new session.
+- Rotation: create the new string with `create_session.py`, update the secret, restart, then end the old session under Settings > Devices.
 
-**Bot session:** `await client.start(bot_token=os.environ["BOT_TOKEN"])`.
-
-**User session:** provision once in a separate interactive script, save `client.session.save()` through `EncryptedSessionStore`, and at service start do `connect()` then check `is_user_authorized()`.
+**Bot session:** `await client.start(bot_token=os.environ["BOT_TOKEN"])`. A bot has no phone login, so `start(bot_token=...)` is safe; keep its `StringSession` or session file separate from any user session.
 
 ## Events
 

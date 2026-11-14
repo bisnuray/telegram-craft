@@ -1,7 +1,6 @@
 """Tests for the sequential trigger runner, using a fake `claude` binary."""
 import importlib.util
 import json
-import os
 import stat
 import sys
 import time

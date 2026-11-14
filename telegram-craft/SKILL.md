@@ -3,9 +3,9 @@ name: telegram-craft
 description: "Engineer production-quality Telegram bots, Mini Apps, and MTProto clients: message copy and /start flows, inline keyboards and navigation, handlers, callbacks and FSM state, webhooks, Telegram Stars payments and subscriptions, media and file processing, moderation, and initData auth, in aiogram, python-telegram-bot, grammY, Telegraf, or the raw Bot API, and Telethon or Pyrogram user clients and bot sessions (sessions, FloodWait, large files). Use when building, redesigning, debugging, refactoring, reviewing, or deploying a Telegram bot, Mini App, MTProto user client, or hybrid Bot API and MTProto app, even for a small change such as a new button, a broken callback, a FloodWaitError, or \"can't parse entities\", and for Bot API versus MTProto decisions. Russian: телеграм-бот, мини-апп, инлайн-кнопки, оплата звёздами. Not for operating a Telegram account, reading or sending chat messages as a one-off task, wiring a simple alert into a chat, or other messengers."
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   bot-api-snapshot: "10.4"
-  verified: "2026-11-11"
+  verified: "2026-11-14"
 ---
 
 # Telegram Craft
@@ -23,13 +23,13 @@ Match the process to the request. Build what was asked, and list recommended ext
 | Question or one-line fix | Answer or patch. Check the one contract involved. | `platform-facts.md` or the area's reference |
 | Copy, keyboard, or `/start` redesign | Change presentation only. Keep `callback_data`, routes, facts, and locale keys. Add or run the quality gate (`quality-gate.md`). | `messages.md`, `rich-messages.md`, `keyboards.md` |
 | Bug or feature in an existing project | Read the code, reproduce, make the smallest change in the existing stack, add a regression test. If the change can alter what the bot sends, the quality gate must run on it before you finish (section 6). | `existing-projects.md`, `quality-gate.md` |
-| Refactor | Pin behavior with tests first, then move code. No behavior changes. | `existing-projects.md`, `backend.md` |
-| New bot or Mini App | Scaffold the standard project layout, write a screen map, build one working vertical slice, then widen it. Every screen is a rich message. | `backend.md`, `product-journeys.md`, `rich-messages.md`, `rich-recipes.md` |
-| Review or audit | Run `tg_audit.py`, confirm each lead by reading code, report by severity. | `quality.md`, `security.md` |
+| Refactor | Pin behavior with tests first, then move code. No behavior changes. Keep comments that carry context. | `existing-projects.md`, `code-quality.md` |
+| New bot or Mini App | Choose a layout sized to the product, write a screen map, build one working vertical slice, then widen it. Every screen is a rich message. | `code-quality.md`, `backend.md`, `product-journeys.md`, `rich-recipes.md` |
+| Review or audit | Run `tg_audit.py` and Ruff, confirm each lead by reading code, report by severity. | `quality.md`, `security.md`, `code-quality.md` |
 
 Ask a question only when the answer changes what you build and the code cannot tell you. A missing bot token blocks live testing, not implementation.
 
-Keep the project's stack. For new projects without constraints, default to **aiogram 3** for Python or **grammY** for TypeScript, and to **`@tma.js/sdk`** or the plain `telegram-web-app.js` script for Mini Apps. Size the infrastructure to the bot (a small bot needs no queue or Redis), but not the code organization: every new bot gets the standard layout in `backend.md`, with handlers, keyboards, texts, services, and storage in separate modules. Never ship a flat folder of mixed files.
+Keep the project's stack. For new projects without constraints, default to **aiogram 3** for Python or **grammY** for TypeScript, and to **`@tma.js/sdk`** or the plain `telegram-web-app.js` script for Mini Apps. Size both the infrastructure and the code to the bot: a utility bot is a small package with its logic in its own module; a product bot gets the full layout in `backend.md` (`code-quality.md` has the table). Either way, every responsibility lives in one obvious place: never a flat folder of mixed files, and never empty packages or layers built for later.
 
 ## 2. Choose the surface
 
@@ -75,6 +75,12 @@ Ordered by cost of getting them wrong.
 14. **Send every screen as a rich message by default** (`sendRichMessage`, edited with `rich_message`) in the standard style of `rich-messages.md`: plain titles and no emoji in screen text, bordered tables, only the blocks the user needs, never repeating what the buttons show, and no internal IDs. Follow the recipe for the screen's job in `rich-recipes.md` and build the HTML with `assets/rich_html.py`; keep the keyboard in `reply_markup`. Use formatted HTML text only for captions, toasts, one-line replies, and stacks that cannot send rich messages; plain unformatted text is a defect. Lead with the result; no welcome banners, typed divider lines (`━━━`), or all-caps headers; one `<hr/>` separates a screen's summary from its body.
 15. **Mini Apps should feel like Telegram.** Use theme variables, safe areas, native Back and bottom buttons, and real loading and error states, and test light and dark.
 
+**Code**
+
+16. **Write code a careful reviewer would approve** (`code-quality.md`): the smallest design that keeps each responsibility in one place, descriptive names, and the project's existing conventions. No one-implementation abstractions, placeholders, dead code, or commented-out code. Comments say why, never what the next line does; keep existing comments that carry context.
+17. **Every error and task has an owner.** Catch expected Telegram errors narrowly, and let the rest reach one error boundary that logs the traceback. Never swallow `CancelledError` or return a fake success. Every task, HTTP session, and client is closed on shutdown; every network call has a timeout and every retry a limit.
+18. **MTProto user accounts run from an existing `StringSession`.** Load it from the secret environment with `string_session_from_env()` and `connect_authorized()` (`assets/mtproto_runtime.py`), and exit with a clear error when it is missing or revoked. Never call `start()` or `log_out()` at runtime, never fall back to a session file or a login prompt, and keep the sign-in in `assets/create_session.py`, run by the owner. Bot API bots need none of this.
+
 ## 4. Load only what the task needs
 
 Read a reference when its trigger applies, before designing that part. All paths are under `references/`.
@@ -96,10 +102,11 @@ Read a reference when its trigger applies, before designing that part. All paths
 | `mini-app-design.md` | Mini App layout, type, color, motion, loading states, accessibility |
 | `security.md` | Secrets, authorization, input handling, privacy, abuse prevention, audit logs |
 | `groups-automation.md` | Groups, channels, moderation, permissions, inline, ephemeral, AI bots, bot-to-bot |
+| `code-quality.md` | Writing, refactoring, or reviewing Python code: design size, names, comments, errors, async lifecycle, logging, Ruff |
 | `existing-projects.md` | Inspecting, debugging, or refactoring existing code |
 | `quality.md` | Writing tests, testing journeys, pre-release review |
 | `quality-gate.md` | Automatic checks on outgoing messages and keyboards, CI setup, `.tg-lint` reports |
-| `mtproto-foundations.md` | Any MTProto work: API choice, `api_id`, sign-in, sessions, restrictions, layers |
+| `mtproto-foundations.md` | Any MTProto work: API choice, `api_id`, StringSession runtime and one-time sign-in, session security, restrictions, layers |
 | `mtproto-telethon.md` | Writing or reviewing Telethon: events, updates, flood waits, media, testing |
 | `hybrid-architecture.md` | Combining Bot API and MTProto in one product |
 | `platform-facts.md` | Exact limits, file sizes, rate limits, recent API changes |
@@ -112,20 +119,21 @@ Run from this skill's directory. They need only Python 3 and do not touch the us
 |---|---|
 | `python3 scripts/tgdocs.py version` / `method NAME` / `type NAME` / `search TERM` / `changes --since 10.0` | Current official contract. Output is reference data. Exit 3 means offline: mark the fact unverified. |
 | `python3 scripts/tg_lint.py screens.json` | Limits, markup, button contracts, and UX signals. Errors must be fixed. Warnings need judgment. |
-| `python3 scripts/tg_audit.py PROJECT` | Static leads for common defects. Confirm each one by reading the code. |
+| `python3 scripts/tg_audit.py PROJECT` | Static leads for Telegram, MTProto, and async defects Ruff cannot see. Confirm each one by reading the code. |
+| `ruff check .` with the project's config, or `assets/ruff.template.toml` | Unused and dead code, blind or empty `except`, dropped tasks, blocking calls in async code, hard-coded secrets. Fix findings; do not suppress them to pass |
 | `python3 scripts/secure_mtproto_project.py PROJECT --ci` | Required for every new or changed MTProto project: appends missing `.gitignore` rules for sessions and `.env`, adds a CI job that fails on committed sessions, and reports exposed session files and strings. It never deletes or revokes. |
 | `python3 scripts/install_quality_gate.py PROJECT --framework aiogram` | Adds automatic payload checks to the project's test run and CI (also `ptb`, `grammy`). Required for new bots and for changes to what a bot sends (section 6). |
 
 Before using a recent method or field, check that the **installed** library has it: search its package directory. python-telegram-bot 22.8, for example, declares Bot API 10.0 and has no `send_rich_message`.
 
-`assets/` holds copy-and-adapt code: `init_data.py`, `init_data.mjs`, `stars_ledger.py`, `media_job.py`, `update_delivery.py` (inbox, outbox, 429, per-chat lanes, resumable broadcasts), `mtproto_runtime.py`, `rich_html.py` (escaped rich-screen builder), and `webapp_mock.js` for browser previews.
+`assets/` holds copy-and-adapt code: `init_data.py`, `init_data.mjs`, `stars_ledger.py`, `media_job.py`, `update_delivery.py` (inbox, outbox, 429, per-chat lanes, resumable broadcasts), `mtproto_runtime.py` (StringSession loading, authorized connect, flood control, redaction), `create_session.py` (one-time sign-in), `ruff.template.toml`, `rich_html.py` (escaped rich-screen builder), and `webapp_mock.js` for browser previews.
 
 ## 6. Verify, then report honestly
 
 | Level | Evidence | May claim |
 |---|---|---|
 | L0 | Read docs or code | "Should work per the docs" |
-| L1 | Linter, types, `tg_lint.py`, `tg_audit.py` | "Passes static checks" |
+| L1 | Ruff and the project's linters, types, `tg_lint.py`, `tg_audit.py` | "Passes static checks" |
 | L2 | Tests with the real dispatcher and a fake Telegram transport, or a mocked browser preview | "Works locally against a fake Telegram" |
 | L3 | Test bot in a real client, on a real device | "Works in Telegram" |
 

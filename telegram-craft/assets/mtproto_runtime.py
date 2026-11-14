@@ -1,7 +1,8 @@
 """Safe runtime helpers for Telethon-based MTProto services.
 
 Copy and adapt. Flood handling and the client registry use only the standard
-library. EncryptedSessionStore requires `cryptography`.
+library. The session helpers import Telethon when called; EncryptedSessionStore
+requires `cryptography`.
 
 Use only with accounts and bots you are authorized to operate.
 """
@@ -12,6 +13,7 @@ import logging
 import os
 import random
 import re
+import struct
 import tempfile
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
@@ -112,6 +114,52 @@ class RecentIds:
         if len(self._seen) > self.capacity:
             self._seen.popitem(last=False)
         return True
+
+
+class SessionUnavailable(RuntimeError):
+    """The account session is missing, malformed, or no longer authorized.
+
+    The fix is a new session from the setup script, never a login at startup.
+    """
+
+
+def string_session_from_env(name: str = "TELEGRAM_SESSION_STRING") -> Any:
+    """Build a StringSession from an environment variable, refusing anything unusable.
+
+    An empty StringSession is a brand-new unauthorized session, and starting a client
+    with one begins an interactive login, so a missing value must fail here.
+    """
+    from telethon.sessions import StringSession
+
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise SessionUnavailable(f"{name} is not set")
+    try:
+        session = StringSession(value)
+    except (ValueError, struct.error) as error:
+        raise SessionUnavailable(f"{name} is not a valid Telethon session string") from error
+    if session.auth_key is None:
+        raise SessionUnavailable(f"{name} holds no authorization key")
+    return session
+
+
+async def connect_authorized(client: Any) -> None:
+    """Connect with an existing session and confirm it is still authorized. Never prompts.
+
+    Use instead of `client.start()`, which asks for a phone number when the
+    session is not authorized.
+    """
+    from telethon import errors
+
+    await client.connect()
+    try:
+        authorized = await client.is_user_authorized()
+    except (errors.UnauthorizedError, errors.AuthKeyError) as error:
+        await client.disconnect()
+        raise SessionUnavailable(f"Telegram rejected the session ({type(error).__name__})") from error
+    if not authorized:
+        await client.disconnect()
+        raise SessionUnavailable("the session is no longer authorized")
 
 
 class EncryptedSessionStore:

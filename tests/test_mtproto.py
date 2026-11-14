@@ -1,4 +1,5 @@
 """Mocked MTProto workflows using real Telethon types. No network, no real account."""
+import ast
 import asyncio
 import importlib.util
 import logging
@@ -266,8 +267,12 @@ class TestCleanupAndCancellation:
         asyncio.run(go())
 
     def test_helpers_never_prompt_or_sign_in(self):
-        source = (SKILL / "assets/mtproto_runtime.py").read_text()
-        assert not re.search(r"\binput\(|getpass|\.start\(|send_code_request|sign_in\(", source.replace("registry.start(", "").replace("async def start(", ""))
+        tree = ast.parse((SKILL / "assets/mtproto_runtime.py").read_text())
+        called = {(getattr(n.func, "value", None) and getattr(n.func.value, "id", ""), getattr(n.func, "attr", getattr(n.func, "id", "")))
+                  for n in ast.walk(tree) if isinstance(n, ast.Call)}
+        forbidden = {name for owner, name in called if name in {"input", "getpass", "send_code_request", "sign_in", "log_out", "qr_login"}
+                     or name == "start" and owner != "registry"}
+        assert not forbidden, forbidden
 
 
 def real_client():

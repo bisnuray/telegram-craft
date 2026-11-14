@@ -11,7 +11,7 @@
       "name": "telegram-craft",
       "source": "./telegram-craft",
       "description": "Build Telegram bots, Mini Apps, and MTProto clients that hold up in production: current Bot API facts, rich message screens in one standard style, keyboards and navigation, Stars payments, Telethon and Pyrogram sessions, and runnable checks for every outgoing message.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": {
         "name": "Bisnu Ray",
         "url": "https://github.com/bisnuray"

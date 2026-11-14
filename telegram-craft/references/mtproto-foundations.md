@@ -44,13 +44,12 @@ Do not build, and refuse to help with: mass messaging or invites, scraping users
 
 **Bot:** `client.start(bot_token=token)`. Safe for unattended services.
 
-**User:** run sign-in once, interactively, as a separate provisioning step. Never collect codes through a chat bot or a web form on behalf of others.
+**User account: an existing `StringSession` by default.** Runtime and initial authorization are separate:
 
-1. Send the code (`auth.sendCode`), then sign in with it.
-2. On `SESSION_PASSWORD_NEEDED`, ask for the 2FA password through a no-echo prompt, and do not log or store it.
-3. Save the resulting session encrypted.
+- **Runtime (every start):** read `TELEGRAM_SESSION_STRING` from the environment or a secret manager, and `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` separately. Build the client with `string_session_from_env()` and call `connect_authorized(client)` (`assets/mtproto_runtime.py`). A missing, empty, malformed, or revoked session raises `SessionUnavailable`; the process exits with that message and the operator is alerted. Never call `client.start()` for a user account at runtime: on an unauthorized session it prompts for a phone number. `StringSession("")` is a new, unauthorized session, so an unset variable must fail before the client exists.
+- **Initial authorization (once, by the account owner):** `assets/create_session.py`, run by hand when the owner chooses to: phone, code, and the 2FA password through no-echo prompts, never logged or stored. It writes the string to a mode-0600 file to move into the secret store. QR login works too. Never collect codes through a chat bot or a web form on behalf of others, and never generate, guess, or fake a session.
 
-QR login is available too. Services must not prompt at startup. If a session is not authorized, fail with a clear error and page the operator.
+A session string does not bypass Telegram's sign-in: it is the result of one, and it stops working when the owner ends it under Settings > Devices.
 
 ## Sessions
 
@@ -66,10 +65,11 @@ A session contains the authorization key and is equivalent to a logged-in accoun
 
 ### Storing sessions safely
 
-- **Where:** a secret manager, or an `EncryptedSessionStore` directory outside the repository (mode 0700) with its key in a secret manager. Pass a `StringSession` in through the environment at runtime, never as a literal in code, tests, or fixtures. `SQLiteSession` files (`name.session`, plus `-journal`, `-wal`, and `-shm` sidecars while open) hold the same key unencrypted.
+- **Where:** a secret manager or the deployment's secret environment (`TELEGRAM_SESSION_STRING`), never a literal in code, tests, fixtures, `.env.example`, docs, or a Docker image. `.gitignore` alone does not protect it: check `docker inspect`, CI logs, and crash reports too. Where the product must catch up on updates across restarts, keep a `SQLiteSession` on an encrypted volume, or a string in `EncryptedSessionStore` (mode 0700, key in a secret manager). `SQLiteSession` files (`name.session`, plus `-journal`, `-wal`, and `-shm` sidecars) hold the same key unencrypted, and `TelegramClient("name", ...)` creates one silently.
+- **Tests:** build a synthetic string offline (`s = StringSession(); s.set_dc(2, "149.154.167.51", 443); s.auth_key = AuthKey(bytes(256))`), mock `connect` and `is_user_authorized`, and never use a real account's session.
 - **Ignore rules:** `secure_mtproto_project.py` appends `*.session`, the sidecars, `*.session.enc`, `.env`, `.env.*` (keeping `.env.example`), and `tdata/`, only where they are missing. It changes no existing rule. `--ci` adds `.github/workflows/telegram-credentials.yml`, a self-contained job that fails when a session file is tracked or a session string is committed. It never replaces an existing workflow. With `--check` it changes nothing and fails when a rule is missing.
 - **Logs and reports:** add `RedactingFilter` from `assets/mtproto_runtime.py` to log handlers. It strips session strings, bot tokens, `api_hash`, phone numbers, and login codes. The quality gate removes session strings from its captures and reports.
-- **Checks:** the same script, and `tg_audit.py`, report session files tracked by git or not ignored, session strings in source, sessions passed to `print` or a logger, and hard-coded `api_hash` values. They never delete, untrack, or revoke anything.
+- **Checks:** the same script, and `tg_audit.py`, report session files and real `.env` files tracked by git, session files not ignored, session strings in source, sessions passed to `print` or a logger, hard-coded `api_hash` values, secrets in a Dockerfile `ENV` or `ARG` (baked into image layers), `StringSession` built from a possibly empty variable, and `start()` or `log_out()` at runtime. They never delete, untrack, or revoke anything.
 
 ### If a session leaked
 

@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from . import SESSION_STRING, Recorder
-from .lint_core import coverage_lines, finding_line, coverage_report, lint_capture, source_callbacks
+from .lint_core import coverage_lines, coverage_report, finding_line, lint_capture, source_callbacks
 
 _recorder = Recorder()
 _result: dict = {}

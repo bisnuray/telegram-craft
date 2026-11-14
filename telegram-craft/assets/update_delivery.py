@@ -22,11 +22,14 @@ fails if a broken variant passes, so the checks are shown to detect the bug they
 from __future__ import annotations
 
 import asyncio
+import logging
 import sqlite3
 import sys
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 
 # Inbox ----------------------------------------------------------------------------------------------
@@ -143,8 +146,8 @@ class ChatLanes:
             try:
                 async with self._gate:
                     await job()
-            except Exception:  # one failed update must not stop the chat's lane; log it in real code
-                pass
+            except Exception:  # one failed update must not stop the chat's lane
+                log.exception("update job failed; the lane continues")
             finally:
                 queue.task_done()
 
@@ -245,7 +248,7 @@ def check_outbox_survives_crash_after_commit(use_outbox: bool) -> bool:
     except Crash:
         if conn.in_transaction:
             conn.rollback()
-    for key, chat_id, text in outbox.due():  # restart: the sender worker drains the outbox
+    for key, _chat_id, text in outbox.due():  # restart: the sender worker drains the outbox
         sent.append(text)
         outbox.mark_sent(key)
     granted = conn.execute("SELECT COUNT(*) FROM grants").fetchone()[0] == 1

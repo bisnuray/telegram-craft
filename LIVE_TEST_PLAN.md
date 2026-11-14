@@ -41,7 +41,8 @@ The owner sets these values on the test host. They stay out of the repository an
 | `TG_MINI_APP_URL` | 2 | HTTPS URL of a disposable deployment |
 | `TG_API_ID`, `TG_API_HASH` | 4–7 | The owner's own app from my.telegram.org. Never from a library example. |
 | `TG_TEST_SESSION_DIR` | 4–7 | Directory, mode 0700, outside the repository |
-| `TG_SESSION_KEY` | 5 | Fernet key for `EncryptedSessionStore`, from a secret manager or an owner-only file |
+| `TG_TEST_SESSION_STRING` | 5 | The test account's session string from `create_session.py`, from an owner-only file or secret manager |
+| `TG_SESSION_KEY` | 5 | Fernet key for `EncryptedSessionStore`, only when that variant is tested |
 | `TG_LIVE_MAX_MESSAGES` | All | Upper limit on sends per run; default 50 |
 
 Store them in a mode 0600 file outside the repository and load it with `set -a; . /path/to/file; set +a` in the session that runs the suite.
@@ -104,7 +105,13 @@ Using the test environment:
 ### 4 and 5. MTProto sign-in
 
 - Bot session: `client.start(bot_token=...)`, `get_me`, one permitted call, one bot-forbidden call such as `messages.getHistory` to observe the real error, then `disconnect`.
-- User session: interactive provisioning only, by the owner, at a terminal. Save through `EncryptedSessionStore`. Reconnect in a new process, read Saved Messages, then call `log_out()` and confirm the session stops working.
+- User session (the default, StringSession):
+  1. The owner runs `assets/create_session.py --out FILE` at a terminal.
+  2. Provide the string as `TG_TEST_SESSION_STRING` from that owner-only file, never pasted into chat or logs.
+  3. In a new process, start with `string_session_from_env()` and `connect_authorized()`, with no prompt, and read Saved Messages.
+  4. Restart the process and confirm it starts again without any prompt.
+  5. The owner ends the session under Settings > Devices. Confirm the next start exits with `SessionUnavailable` and never asks for a phone number.
+- `EncryptedSessionStore`, only if the product needs catch-up across restarts: save, reconnect in a new process, then end the session as above.
 
 ### 6. Media transfer
 

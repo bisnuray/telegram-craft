@@ -29,11 +29,13 @@ minimum), 2 bad input.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import re
 import sys
 from html import unescape
 from html.parser import HTMLParser
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -502,10 +504,8 @@ def normalize_params(params: dict[str, Any]) -> dict[str, Any]:
     for field in JSON_FIELDS:
         value = clean.get(field)
         if isinstance(value, str) and value[:1] in "[{":
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 clean[field] = json.loads(value)
-            except json.JSONDecodeError:
-                pass
     return clean
 
 
@@ -841,7 +841,7 @@ def check_rich_design(html: str, add, markup: Any = None) -> None:
         add("warning", "rich-fake-structure", "text rules, typed bullets, or <br> stacks; use <hr/>, <ul>, and <p>")
     if "hr" in blocks:
         first, last = blocks.index("hr"), len(blocks) - 1 - blocks[::-1].index("hr")
-        adjacent = any(a == b == "hr" for a, b in zip(blocks, blocks[1:]))
+        adjacent = any(a == b == "hr" for a, b in pairwise(blocks))
         if blocks.count("hr") > 2 or first == 0 or first == 1 and blocks[0] in HEADING_TAGS or last == len(blocks) - 1 or adjacent:
             add("warning", "rich-divider", "use one <hr/> between the summary and the body; not after the title, first, last, or doubled")
     if opened.count("blockquote") > 1:
@@ -951,7 +951,7 @@ def source_callbacks(root: Path, limit: int = 400) -> dict[str, list[dict[str, A
             for match in _CALLBACK_LITERAL.finditer(line):
                 found = True
                 value = match.group(3)
-                prefix = re.split(r"\{", value, 1)[0] if match.group(1) else value
+                prefix = re.split(r"\{", value, maxsplit=1)[0] if match.group(1) else value
                 literal.append({"file": where, "line": number, "pattern": prefix, "exact": not match.group(1)})
             for match in _GRAMMY_TEXT.finditer(line):
                 found = True

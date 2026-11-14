@@ -302,7 +302,8 @@ class TestLint:
         assert "callback-bytes" in codes({"text": "t", "reply_markup": {"inline_keyboard": [[button]]}}, "error")
 
     def test_button_contract(self):
-        kb = lambda b: {"text": "t", "reply_markup": {"inline_keyboard": [[b]]}}
+        def kb(b):
+            return {"text": "t", "reply_markup": {"inline_keyboard": [[b]]}}
         assert "button-action" in codes(kb({"text": "x"}), "error")
         assert "button-action" in codes(kb({"text": "x", "url": "https://t.me", "callback_data": "a"}), "error")
         assert "button-url" in codes(kb({"text": "x", "url": "example.com"}), "error")
@@ -490,7 +491,7 @@ def online():
     try:
         tgdocs.fetch("bots/api-changelog")
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001 - any failure to fetch means the live tests are skipped
         return False
 
 

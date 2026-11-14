@@ -41,4 +41,10 @@ The bot must keep working in degraded mode when MTProto is unavailable, and shou
 
 ## Deployment
 
-Give the bot, worker, and session store separate secrets. Only the worker can read sessions. Deploy workers stop-first. Monitor queue depth, job age, and flood wait totals. See `delivery.md` and `security.md` for the general rules.
+Give each component its own credentials and lifecycle:
+
+- **Bot API process:** `BOT_TOKEN` only. It never reads a session.
+- **User-account worker:** `TELEGRAM_SESSION_STRING`, `TELEGRAM_API_ID`, and `TELEGRAM_API_HASH`, loaded with `string_session_from_env()` and `connect_authorized()`. If it cannot start, it reports the capability as unavailable and the bot keeps working.
+- **MTProto bot session (large files):** the same `BOT_TOKEN` with `start(bot_token=...)`, and its own session, never shared with a user account.
+
+Each client is created, connected, and disconnected by its owner, and is testable alone with the other side faked. Only the worker can read sessions. Deploy workers stop-first. Monitor queue depth, job age, and flood wait totals. See `delivery.md` and `security.md` for the general rules.
