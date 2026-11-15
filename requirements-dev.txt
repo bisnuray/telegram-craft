@@ -8,3 +8,4 @@ pytest-cov
 pyyaml
 aiosqlite
 ruff==0.17.5
+pymongo==4.20.0

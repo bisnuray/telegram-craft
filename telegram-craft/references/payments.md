@@ -1,6 +1,6 @@
 # Payments and digital products
 
-Use for Stars, invoices, subscriptions, marketplaces, and delivery. Start from `assets/stars_ledger.py`. Confirm details with `tgdocs.py method createInvoiceLink`.
+Use for Stars, invoices, subscriptions, marketplaces, and delivery. Start from `assets/mongo_store.py` (`MongoStarsLedger`) for MongoDB projects, or `assets/stars_ledger.py` for SQL ones; `database.md` says which fits. Confirm details with `tgdocs.py method createInvoiceLink`.
 
 ## Policy
 

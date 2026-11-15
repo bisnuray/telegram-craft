@@ -66,7 +66,7 @@ async def status(event):
 ```
 
 - Handlers run concurrently by default. `sequential_updates=True` serializes, at the cost of throughput.
-- A handler exception is logged and does not stop the client. Put business state in a database.
+- A handler exception is logged and does not stop the client. Put business state in a database: choosing it, MongoDB by default for a new project, is in `database.md`. The session itself never goes in it.
 - `events.NewMessage` fires for your own outgoing messages unless `incoming=True`. A user-session handler without that filter can reply to itself in a loop.
 - Treat message text and sender names as untrusted, as with any bot.
 

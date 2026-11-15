@@ -2,6 +2,24 @@
 
 All notable changes to Telegram Craft. Versions follow `metadata.version` in `telegram-craft/SKILL.md`.
 
+## 1.3.0 (2026-11-15)
+
+### Added
+- **Database selection** (`references/database.md`, SKILL.md rule 19):
+  - an existing project keeps its database;
+  - a new project with persistent data uses MongoDB by default, stated in one sentence;
+  - PostgreSQL when money moves between users or data is strongly relational, SQLite only for local-only single-process bots, and Redis only for temporary state.
+- **MongoDB practice:**
+  - PyMongo `AsyncMongoClient` (Motor is deprecated), and aiogram `PyMongoStorage`;
+  - one client per process, with timeouts;
+  - document design, unique indexes, atomic conditional updates, and range pagination;
+  - transactions only on replica sets, with backups and tests against a real server.
+- **`assets/mongo_store.py`:** a client factory, `ensure_indexes`, `UserSettings`, and `MongoStarsLedger`, with the same order invariants as `stars_ledger.py`. Integration tests run against a MongoDB service in CI.
+- **Storage responsibilities:** application data, FSM state, MTProto sessions (secret configuration, never documents), media (`file_id` or object storage, with metadata in the database), and payments.
+
+### Changed
+- `backend.md` and `payments.md` no longer present SQLite as the first choice. `stars_ledger.py` is the SQL version, and `update_delivery.py` is a pattern demo.
+
 ## 1.2.0 (2026-11-14)
 
 ### Added

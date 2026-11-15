@@ -42,6 +42,7 @@ Telegram projects usually fail in three ways: API calls written from memory, a c
 | **MTProto clients** (Telethon, Pyrogram forks such as kurigram) | User accounts run from an existing `StringSession` (no login prompts at startup, clear failure when it is missing or revoked), one-time sign-in script, bot sessions, `FloodWait`, reconnects, entity caching, session security, authorization boundaries |
 | **Hybrid apps** | Bot API interface with an MTProto worker for large files or history, kept separate |
 | **Media** | ffmpeg jobs, size limits, `file_id` caching, progress, cleanup |
+| **Storage** | MongoDB by default for new projects (PyMongo `AsyncMongoClient`, indexes, atomic updates, an idempotent Stars ledger); PostgreSQL, SQLite, or Redis when the requirements call for them; an existing project keeps its database |
 | **Code quality** | Design sized to the product, comments that explain why (never narration), narrow error handling, owned async tasks with timeouts and clean shutdown, and a curated Ruff config |
 
 It sizes the process to the job. A one-line fix stays a one-line fix. A new bot starts with a screen map and one working flow.
@@ -56,7 +57,7 @@ It sizes the process to the job. A one-line fix stays a one-line fix. A new bot 
 | **`secure_mtproto_project.py`** | Adds missing `.gitignore` rules for `.session` files and `.env`, adds a CI job that fails on a committed session, and reports leaked session strings. It never deletes or revokes anything. |
 | **`tg_audit.py` and Ruff** | Ruff (`assets/ruff.template.toml`) catches unused and dead code, blind or empty `except`, dropped tasks, and blocking calls in async code. `tg_audit.py` adds what Ruff cannot see: swallowed cancellation, a user client started with `start()` or logged out at runtime, `StringSession` from a possibly empty variable, and secrets baked into a Dockerfile. |
 | **`tgdocs.py`** | Reads the current official Bot API and MTProto docs, so facts are looked up, not recalled. |
-| **Assets** | Copy-and-adapt code: `rich_html.py` (rich screens, escaped by construction), `mtproto_runtime.py` (StringSession loading and authorized connect), `create_session.py` (one-time sign-in), `initData` validation (Python and JS), a Stars ledger, media jobs, MTProto runtime helpers with log redaction, a Mini App browser mock |
+| **Assets** | Copy-and-adapt code: `rich_html.py` (rich screens, escaped by construction), `mongo_store.py` (MongoDB client, settings, Stars ledger), `mtproto_runtime.py` (StringSession loading and authorized connect), `create_session.py` (one-time sign-in), `initData` validation (Python and JS), a Stars ledger, media jobs, MTProto runtime helpers with log redaction, a Mini App browser mock |
 
 ## Install
 

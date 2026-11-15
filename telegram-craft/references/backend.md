@@ -70,10 +70,11 @@ Handlers should validate, call a service, render, and return. Register more spec
 
 ## Data
 
-- **SQLite** suits one process with modest writes. Enable WAL mode and a busy timeout. **PostgreSQL** is for concurrent writers or several processes. Use a real async driver, and run blocking drivers off the event loop.
-- Use migrations (Alembic or the stack's equivalent) once data matters.
-- `chat_id` and `user_id` can exceed 32 bits. Use `BIGINT`.
-- Handle concurrent transitions with conditional updates (`UPDATE ... WHERE status = 'pending'`) and unique constraints. A read-then-write in separate steps races under double taps.
+- **Which database:** keep an existing project's database. A new project that needs persistent data uses **MongoDB** by default, with PyMongo's `AsyncMongoClient`. Use **PostgreSQL** when money moves between users or the data is strongly relational, **SQLite** only when the owner wants local-only, single-process storage, and **Redis** for temporary state beside the primary database. Selection rules, document design, indexes, and MongoDB practice: `database.md`.
+- **SQLite**, when chosen: enable WAL mode and a busy timeout, one writing process. **PostgreSQL**: a real async driver (asyncpg, psycopg 3). Run any blocking driver off the event loop.
+- Use migrations once data matters: Alembic or the stack's equivalent for SQL, versioned documents and scripts for MongoDB.
+- `chat_id` and `user_id` can exceed 32 bits: `BIGINT` in SQL; MongoDB stores Python ints as 64-bit.
+- Handle concurrent transitions with conditional updates (`UPDATE ... WHERE status = 'pending'`, or `find_one_and_update` with the status in the filter) and unique constraints or indexes. A read-then-write in separate steps races under double taps.
 - Keep transactions short, and do not hold one across a Telegram call or other network I/O.
 
 ## Update idempotency
@@ -91,14 +92,14 @@ Delivery is at-least-once: webhook retries and restarts redeliver. Choose a leve
 
 Telegram and your database are not atomic. To guarantee a send after commit, write an outbox row in the transaction and have a worker send it, accepting a possible duplicate after a crash.
 
-`assets/update_delivery.py` implements these shapes with SQLite: an update inbox with leased claims, an outbox, 429 handling, per-chat lanes, and resumable broadcasts. `python3 assets/update_delivery.py --self-test` checks each guarantee against a deliberately broken variant. Copy the pieces the bot needs, not all of them: a small bot needs only idempotent handlers.
+`assets/update_delivery.py` implements these shapes with SQLite so its self-test needs no server; port the same logic to the project's database: an update inbox with leased claims, an outbox, 429 handling, per-chat lanes, and resumable broadcasts. `python3 assets/update_delivery.py --self-test` checks each guarantee against a deliberately broken variant. Copy the pieces the bot needs, not all of them: a small bot needs only idempotent handlers.
 
 ## Conversation state
 
 | Store | Use |
 |---|---|
 | FSM memory | Single-process development |
-| FSM on Redis or database | Production flows that should survive restarts |
+| FSM on the primary database or Redis (aiogram `PyMongoStorage` or `RedisStorage`; never `MongoStorage`, which needs the deprecated Motor) | Production flows that should survive restarts |
 | Your database | Anything of business value |
 
 Define timeouts for abandoned flows. In groups, pick the state key deliberately: aiogram's default `USER_IN_CHAT` is usually right. Clearing FSM state does not remove old keyboards.
