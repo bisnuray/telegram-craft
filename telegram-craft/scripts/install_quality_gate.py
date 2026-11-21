@@ -2,10 +2,11 @@
 """Add the Telegram quality gate to a bot project (Python 3.9+, standard library).
 
   install_quality_gate.py PROJECT --framework aiogram|ptb|grammy [--tests-dir tests]
-                          [--with-example] [--no-ci] [--force]
+                          [--with-example] [--with-ci] [--force]
 
-Copies the validation core and one framework adapter into the project, enables
-the test integration, and adds a CI workflow and an optional pre-commit snippet.
+Copies the validation core and one framework adapter into the project and enables
+the test integration. A CI workflow is added only with --with-ci or when the project
+already has .github/workflows; a pre-commit hook only when it already uses pre-commit.
 Existing files are left alone unless --force is given. If the project already has
 a gate somewhere else, nothing is installed and its location is printed.
 """
@@ -85,8 +86,17 @@ def install(project: Path, framework: str, tests_dir: str | None, with_example: 
     if not no_ci:
         name = "telegram-quality-node.yml" if node else "telegram-quality-python.yml"
         copy(KIT / "ci" / name, project / ".github/workflows/telegram-quality.yml", force, log)
-        snippet = (KIT / "ci/pre-commit-telegram.yaml").read_text(encoding="utf-8").replace("__TEST_COMMAND__", "node --test" if node else "pytest -q")
-        write(snippet, project / ".pre-commit-telegram.yaml", force, log)
+    precommit = project / ".pre-commit-config.yaml"
+    if precommit.exists() and "telegram-quality-gate" not in precommit.read_text(encoding="utf-8"):
+        hook = (KIT / "ci/pre-commit-telegram.yaml").read_text(encoding="utf-8").replace("__TEST_COMMAND__", "node --test" if node else "pytest -q")
+        entry = hook.split("repos:\n", 1)[1]
+        text = precommit.read_text(encoding="utf-8")
+        if text.rstrip().splitlines()[-1].startswith((" ", "-")) and "repos:" in text:
+            with precommit.open("a", encoding="utf-8") as handle:
+                handle.write(("" if text.endswith("\n") else "\n") + entry)
+            log.append(f"added the gate hook to {precommit}")
+        else:
+            log.append(f"add this hook to the repos list in {precommit}:\n{entry}")
     ignore = project / ".gitignore"
     text = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
     if ".tg-lint" not in text:
@@ -102,14 +112,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--framework", required=True, choices=["aiogram", "ptb", "grammy"])
     parser.add_argument("--tests-dir")
     parser.add_argument("--with-example", action="store_true")
-    parser.add_argument("--no-ci", action="store_true")
+    parser.add_argument("--with-ci", action="store_true", help="add a GitHub Actions workflow")
+    parser.add_argument("--no-ci", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args(argv)
     project = Path(args.project)
     if not project.is_dir():
         print(f"bad input: {project} is not a directory", file=sys.stderr)
         return 2
-    for line in install(project, args.framework, args.tests_dir, args.with_example, args.no_ci, args.force):
+    for line in install(project, args.framework, args.tests_dir, args.with_example, args.no_ci or not (args.with_ci or (project / ".github/workflows").is_dir()), args.force):
         print(line)
     return 0
 

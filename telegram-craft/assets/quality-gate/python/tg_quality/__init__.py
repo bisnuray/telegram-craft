@@ -52,7 +52,7 @@ class Recorder:
     def save(self, directory: str | os.PathLike[str] = ".tg-lint") -> Path:
         target = Path(directory)
         target.mkdir(parents=True, exist_ok=True)
-        path = target / f"capture-{os.getpid()}.json"
+        path = target / "capture.json"  # one pytest process: overwrite, never accumulate
         data: dict[str, Any] = {"version": 1, "framework": self.framework, "interactions": self.interactions}
         if self.handlers is not None:
             data["handlers"] = list(self.handlers.values())

@@ -92,6 +92,8 @@ Work economically; these habits cut cost without cutting checks:
 - Write each file once, completely, then test. Prefer one multi-file step over many small edits.
 - Run tests quietly (`pytest -q`, adding `-x --tb=short` while fixing) and show only the failing part. Run the full gate once, after the last edit.
 - Build only what was asked: no extra features, files, or README sections beyond setup and run steps.
+- Keep the project root to what the owner uses. Put tool settings (pytest, Ruff) in one `pyproject.toml`, not `pytest.ini` plus `ruff.toml`. Add CI only if the project already has `.github/workflows` or the user asks.
+- Run tests in the environment the project already has. If it has none, make a throwaway one outside the project (`python3 -m venv "${TMPDIR:-/tmp}/<bot>-venv"`), never a `.venv/` inside it unless the user asks; the README gives the owner the setup command. Delete `.pytest_cache/`, `.ruff_cache/`, and `__pycache__/` before handing off a new project.
 
 | Read | When the task involves |
 |---|---|
@@ -131,7 +133,7 @@ Run from this skill's directory. They need only Python 3 and do not touch the us
 | `python3 scripts/tg_audit.py PROJECT` | Static leads for Telegram, MTProto, and async defects Ruff cannot see. Confirm each one by reading the code. |
 | `ruff check .` with the project's config, or `assets/ruff.template.toml` | Unused and dead code, blind or empty `except`, dropped tasks, blocking calls in async code, hard-coded secrets. Fix findings; do not suppress them to pass |
 | `python3 scripts/secure_mtproto_project.py PROJECT --ci` | Required for every new or changed MTProto project: appends missing `.gitignore` rules for sessions and `.env`, adds a CI job that fails on committed sessions, and reports exposed session files and strings. It never deletes or revokes. |
-| `python3 scripts/install_quality_gate.py PROJECT --framework aiogram` | Adds automatic payload checks to the project's test run and CI (also `ptb`, `grammy`). Required for new bots and for changes to what a bot sends (section 6). |
+| `python3 scripts/install_quality_gate.py PROJECT --framework aiogram` | Adds automatic payload checks to the project's test run (also `ptb`, `grammy`); `--with-ci` also adds a GitHub workflow. Required for new bots and for changes to what a bot sends (section 6). |
 
 Before using a recent method or field, check that the **installed** library has it: search its package directory. python-telegram-bot 22.8, for example, declares Bot API 10.0 and has no `send_rich_message`.
 

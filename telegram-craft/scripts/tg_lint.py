@@ -14,7 +14,7 @@ Optional `kind`: root, menu, list, detail, form, confirm, result, error,
 notification, caption, callback_answer. `caption` is accepted in place of `text`.
 
 --capture reads the outgoing Bot API calls recorded by the quality-gate adapters
-(a file, or a directory of capture-*.json) and also checks each simulated
+(a file, or a directory of capture*.json) and also checks each simulated
 interaction: unanswered callbacks, handler exceptions, and which offered buttons
 tests never pressed. Coverage separates confirmed gaps (registered handlers that
 never ran, callbacks sent without any captured screen offering them) from
@@ -899,7 +899,7 @@ def rich_callbacks(rich: Any) -> list[str]:
 
 def load_capture(path: Path) -> list[dict[str, Any]]:
     """Return interactions from one capture file or a directory of them."""
-    files = sorted(path.glob("capture-*.json")) if path.is_dir() else [path]
+    files = sorted(path.glob("capture*.json")) if path.is_dir() else [path]
     interactions: list[dict[str, Any]] = []
     for file in files:
         data = json.loads(file.read_text(encoding="utf-8"))
@@ -910,7 +910,7 @@ def load_capture(path: Path) -> list[dict[str, Any]]:
 
 def load_handlers(path: Path) -> list[dict[str, Any]] | None:
     """Merge the handler registries saved by adapters that can inspect their framework."""
-    files = sorted(path.glob("capture-*.json")) if path.is_dir() else [path]
+    files = sorted(path.glob("capture*.json")) if path.is_dir() else [path]
     merged: dict[str, dict[str, Any]] = {}
     seen_registry = False
     for file in files:

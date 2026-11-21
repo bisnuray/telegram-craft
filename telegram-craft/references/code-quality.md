@@ -200,7 +200,7 @@ class PriceWatcher:
 
 ## Tooling
 
-Tools enforce what they can, so review time goes to design. Use what the project already has. For a new project, or one without a linter, copy `assets/ruff.template.toml` to the project root as `ruff.toml` (or put its tables under `[tool.ruff]` in `pyproject.toml`) and run:
+Tools enforce what they can, so review time goes to design. Use what the project already has. For a new project, or one without a linter, put the tables of `assets/ruff.template.toml` under `[tool.ruff]` in `pyproject.toml` (next to `[tool.pytest.ini_options]`), or copy it as `ruff.toml` only when the project has no `pyproject.toml` and should not get one and run:
 
 ```bash
 ruff check .            # errors to fix, not to silence

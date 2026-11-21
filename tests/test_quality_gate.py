@@ -577,6 +577,30 @@ class TestInstaller:
         assert (tmp_path / "tests/conftest.py").read_text().count("tg_quality.pytest_plugin") == 1
         assert (tmp_path / ".gitignore").read_text().count(".tg-lint") == 1
 
+    def test_cli_adds_no_ci_or_precommit_files_by_default(self, tmp_path):
+        assert installer.main([str(tmp_path), "--framework", "aiogram"]) == 0
+        assert not (tmp_path / ".github").exists()
+        assert not (tmp_path / ".pre-commit-telegram.yaml").exists()
+
+    def test_cli_with_ci_adds_the_workflow(self, tmp_path):
+        installer.main([str(tmp_path), "--framework", "aiogram", "--with-ci"])
+        assert (tmp_path / ".github/workflows/telegram-quality.yml").exists()
+
+    def test_hook_is_merged_into_an_existing_precommit_config(self, tmp_path):
+        config = tmp_path / ".pre-commit-config.yaml"
+        config.write_text("repos:\n  - repo: https://github.com/astral-sh/ruff-pre-commit\n    rev: v0.6.0\n    hooks:\n      - id: ruff\n")
+        installer.install(tmp_path, "aiogram", None, False, True, False)
+        installer.install(tmp_path, "aiogram", None, False, True, False)
+        yaml = pytest.importorskip("yaml")
+        ids = [hook["id"] for repo in yaml.safe_load(config.read_text())["repos"] for hook in repo["hooks"]]
+        assert ids == ["ruff", "telegram-quality-gate"]
+
+    def test_capture_is_overwritten_not_accumulated(self, tmp_path):
+        from tg_quality import Recorder
+        first = Recorder().save(tmp_path)
+        second = Recorder().save(tmp_path)
+        assert first == second and [p.name for p in tmp_path.iterdir()] == ["capture.json"]
+
     def test_copies_only_the_chosen_adapter(self, tmp_path):
         installer.install(tmp_path, "ptb", None, False, True, False)
         names = {p.name for p in (tmp_path / "tests/tg_quality").iterdir()}

@@ -8,7 +8,7 @@ Use when adding or running automated checks on a bot's messages and keyboards, o
 python3 scripts/install_quality_gate.py PROJECT --framework aiogram   # or ptb, grammy
 ```
 
-It copies the validation core and adapter, enables the test integration, and adds a CI workflow. It keeps existing files unless `--force` is given, and installs nothing if the project already has a gate elsewhere; reuse that one. `--with-example` adds a working example bot and tests.
+It copies the validation core and adapter, and enables the test integration. It adds a CI workflow only with `--with-ci` or when `.github/workflows` already exists, and a pre-commit hook only when `.pre-commit-config.yaml` already exists. Each run overwrites `.tg-lint/capture.json` and `report.json`, so the folder never grows. It keeps existing files unless `--force` is given, and installs nothing if the project already has a gate elsewhere; reuse that one. `--with-example` adds a working example bot and tests.
 
 Run the tests with `TG_LINT_REQUIRE_INTERACTIONS=1` before you report. The output ends with a `Telegram quality gate` section. Quote its coverage line (`N interactions, ...; pressed X/Y offered button routes`) in the handoff. If it reports errors, fix the bot, not the gate.
 
