@@ -29,7 +29,29 @@ def test_catalog(tg_recorder):
 
 Bound every wait in a journey, for example `await asyncio.wait_for(started.wait(), 2)`. An unbounded wait turns a broken payload into a hung test run, and the gate cannot report on a run that never ends.
 
-The harness also offers `text`, `media`, `pre_checkout`, `successful_payment`, `raw_update`, `fail_next` for simulated API errors, `respond` for custom results, `sent(method)`, and `labels`. grammY uses the same names in camelCase. Install the gate from `tg_quality.mjs` with `installLintGate(recorder)`.
+The harness API, complete. Use it from this list; do not read the vendored `tg_quality` source.
+
+```python
+AiogramHarness(dispatcher, tg_recorder, default=None, workflow_data=None, user_id=1000, chat_id=None, chat_type="private")
+PTBHarness(register, tg_recorder, user_id=1000, ...)  # register(app) adds the handlers
+# workflow_data reaches handlers as keyword arguments: workflow_data={"store": store}
+with bot.scenario("name"): ...                      # groups a journey in the report
+await bot.command("/start", expected_silence=False, expected_error=False)
+await bot.text("hello", expected_silence=False, expected_error=False)
+await bot.press("Label")                            # fails if no button with that label is on screen
+await bot.callback("data", expected_error=False, user_id=None)   # raw or forged callback_data
+await bot.media("photo", attachment_dict, caption=None)
+await bot.pre_checkout(payload, total, currency="XTR")
+await bot.successful_payment(payload, total, charge_id="charge-1", currency="XTR")
+await bot.raw_update(update_dict, kind="update")
+bot.fail_next(method, description, error_code=400, retry_after=None)  # next call to method fails
+bot.respond(method, result)                         # custom result for method
+bot.sent("sendMessage") -> list[dict]               # params of each call
+bot.last_text -> str | None                         # last text the bot sent
+bot.labels -> list[str]                             # buttons on the current keyboard
+```
+
+The simulated user is id `1000`; the bot is id `999`. grammY uses the same names in camelCase. Install the gate from `tg_quality.mjs` with `installLintGate(recorder)`.
 
 The Node gate needs Python 3 on the path, because all three frameworks share one validation core.
 

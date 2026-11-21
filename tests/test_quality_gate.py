@@ -615,3 +615,12 @@ def test_activation_description_is_the_adopted_one():
     assert len(current) <= 1024
     original = (ROOT / "evals/description_original.txt").read_text().strip()
     assert original.endswith("or other messengers.") and current.endswith("or other messengers.")
+
+
+def test_last_text_reads_rich_messages():
+    from tg_quality import BaseHarness, Recorder
+    harness = BaseHarness(Recorder())
+    harness.calls.append({"method": "sendRichMessage", "params": {"rich_message": json.dumps({"html": "<h3>Plans</h3>"})}})
+    assert harness.last_text == "<h3>Plans</h3>"
+    harness.calls.append({"method": "sendMessage", "params": {"text": "Saved"}})
+    assert harness.last_text == "Saved"

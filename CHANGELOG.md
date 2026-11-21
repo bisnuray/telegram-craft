@@ -2,6 +2,23 @@
 
 All notable changes to Telegram Craft. Versions follow `metadata.version` in `telegram-craft/SKILL.md`.
 
+## 1.4.0 (2026-11-21)
+
+### Added
+- **Decision ladder** (`code-quality.md`): before writing code, check whether it needs to exist, then reuse the project, this skill's assets, and the framework or Bot API before writing new code. Find every caller a change must reach first.
+- **Work economically** (SKILL.md section 4): read each reference once, never read asset source to learn an API, write each file once, run tests quietly, and run the gate once after the last edit.
+- **Complete API lists** for the gate harness (`quality-gate.md`), `rich_html.py` (`rich-messages.md`), and `mongo_store.py` (`database.md`), kept in sync with the code by `tests/test_api_docs.py`.
+- **Structure leads** in `tg_audit.py`: `flat-layout`, `handlers-in-builder`, `module-too-long`, and `generic-package-name`.
+
+### Changed
+- **Project layout** (`backend.md`): the package is named after the bot (`notes_bot/`), `texts/` is now `screens/`, `storage/` is now `database/`, `middlewares/` is optional, and `var/` is gone: logs go to stdout and a `data/` directory (from `DATA_DIR`) exists only when the bot keeps files on disk. Handlers live at module level and are registered in `build_router()`.
+- **Product bots:** anything with storage, FSM, or more than two screens uses the package layout.
+- **Tests:** one focused test per piece of real logic; trivial code needs none beyond the gate's journey tests. Known shortcuts carry a `# shortcut:` comment.
+- **Handoff:** shorter, with no project tree, ending with what was skipped or not verified.
+
+### Fixed
+- The gate harness `last_text` / `lastText` now returns the content of rich messages instead of `None`.
+
 ## 1.3.0 (2026-11-15)
 
 ### Added

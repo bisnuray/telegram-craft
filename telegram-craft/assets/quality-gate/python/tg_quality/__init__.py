@@ -121,10 +121,19 @@ class BaseHarness:
 
     @property
     def last_text(self) -> str | None:
+        """Text of the last message or screen the bot sent; for a rich message, its HTML or Markdown."""
         for call in reversed(self.calls):
             params = call["params"]
             if params.get("text") and call["method"] != "answerCallbackQuery":
                 return params["text"]
+            rich = params.get("rich_message")
+            if isinstance(rich, str):
+                try:
+                    rich = json.loads(rich)
+                except ValueError:
+                    rich = None
+            if isinstance(rich, dict) and (rich.get("html") or rich.get("markdown")):
+                return rich.get("html") or rich.get("markdown")
         return None
 
     # Simulated user actions ---------------------------------------------------

@@ -57,7 +57,11 @@ Never ship SQLite because it was the only database you could start.
 - inject it through the framework (aiogram workflow data, python-telegram-bot `bot_data`);
 - never connect inside a handler.
 
-The URI comes from `MONGODB_URI`, a secret. Set `serverSelectionTimeoutMS` and `timeoutMS` so a lost server fails fast instead of hanging a handler. `assets/mongo_store.py` has the shape.
+The URI comes from `MONGODB_URI`, a secret. Set `serverSelectionTimeoutMS` and `timeoutMS` so a lost server fails fast instead of hanging a handler. Copy `assets/mongo_store.py`; its API, so you need not read it first:
+- `connect(uri=None)` returns the client, reading `MONGODB_URI`;
+- `await ensure_indexes(db)` at startup;
+- `UserSettings(db)`: `get(user_id)`, `update(user_id, **changes)`;
+- `MongoStarsLedger(db)`: `create_order(user_id, sku, amount)` returns the invoice payload, then `pre_checkout(order_id, user_id, currency, amount)` (raises `OrderRejected`), `record_payment(order_id, user_id, charge_id, currency, amount)` returns `PaymentResult(order_id, newly_recorded)`, `claim_delivery`, `mark_delivered`, `mark_refunded(charge_id)`, `orders_for(user_id, after=None, limit=20)`.
 
 **Documents.**
 - Key users by their Telegram id: `{"_id": user_id}`. Python ints map to 64-bit integers, which fits Telegram ids.

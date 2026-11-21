@@ -19,9 +19,19 @@ Choose the smallest structure that keeps each responsibility in one obvious plac
 
 | Product | Shape |
 |---|---|
-| Utility bot: one or two commands, no storage | A small package: `bot.py` (handlers and startup) plus a module for the real logic, such as `money.py`. No services layer |
-| Product bot: several flows, storage, payments | The layout in `backend.md`: handlers, keyboards, texts, services, storage |
+| Utility bot: one or two commands, **and** no storage, **and** no FSM | A small package: `bot.py` (handlers and startup) plus a module for the real logic, such as `money.py`. No services layer |
+| Product bot: anything with storage, FSM, or more than two screens | The layout in `backend.md`: `handlers/`, `keyboards/`, `screens/`, `services/`, `database/` packages, one module per feature. A notes, reminders, or shop bot is a product bot |
 | Platform: several bots, workers, a Mini App backend | Separate deployables that share a domain package. Boundaries follow what changes and scales separately |
+
+Before writing any piece, take the first option that fully works:
+
+1. **Does it need to exist?** Skip features, options, and flexibility nobody asked for; name them in one line of the handoff. A vague request gets the smallest version that does the core job.
+2. **Does the project already have it?** A helper, a service, a pattern. Use it the way the surrounding code does.
+3. **Does this skill have it?** `rich_html.py` for screens, `mongo_store.py` for MongoDB, `init_data.py`, `stars_ledger.py`, `update_delivery.py`, `mtproto_runtime.py`, the gate harness. Copy it; do not rewrite it.
+4. **Do the framework or Telegram have it?** aiogram `CallbackData`, magic filters (`F`), FSM, `PyMongoStorage`, `InlineKeyboardBuilder`; Bot API `copy_message`, `file_id` reuse, deep links, `answer_callback_query` alerts. Python's standard library before a new dependency; never add a dependency for a few lines.
+5. **Otherwise,** the least code a reader understands at a glance. A one-liner that needs decoding is not short.
+
+Be minimal about the solution, never about the change: before editing, find every caller, test, and config the change must reach, and finish all of them.
 
 - **Handlers are transport.** They parse the update, call one function that does the work, and send the result. Business rules a test needs to reach live outside the handler.
 - **No abstraction without a second real use.** No `ABC` or `Protocol` with one implementation, no factory that returns one class, no `*Manager` or `*Service` wrapping two functions, no config flag nothing sets. Add them when the second case arrives.
@@ -122,6 +132,7 @@ Keep, and write, comments like these:
 # Cancel the poller before closing the HTTP session, or its last request fails.
 ```
 
+- A shortcut with a known limit gets one comment: `# shortcut: <the limit>, <when to upgrade>`, for example `# shortcut: in-memory rate limit, move to Redis when running more than one instance`.
 - Docstrings for public functions and classes whose contract is not obvious from the signature: arguments with constraints, side effects, what is raised. Not on every private helper.
 - When editing existing code, keep its comments that carry context, even long ones. Remove only comments that are wrong or restate the code, and update comments next to code you change.
 - Match the comment style already in the file.

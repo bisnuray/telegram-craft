@@ -98,7 +98,12 @@ export class GrammyHarness {
   get labels() { return this.keyboard.flat().map((b) => b.text); }
   sent(method) { return this.calls.filter((c) => c.method === method).map((c) => c.params); }
   get lastText() {
-    for (const call of [...this.calls].reverse()) if (call.params.text && call.method !== "answerCallbackQuery") return call.params.text;
+    for (const call of [...this.calls].reverse()) {
+      if (call.params.text && call.method !== "answerCallbackQuery") return call.params.text;
+      let rich = call.params.rich_message;
+      if (typeof rich === "string") { try { rich = JSON.parse(rich); } catch { rich = null; } }
+      if (rich && (rich.html || rich.markdown)) return rich.html || rich.markdown;
+    }
     return null;
   }
 

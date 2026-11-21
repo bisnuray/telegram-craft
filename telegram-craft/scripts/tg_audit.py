@@ -413,6 +413,50 @@ def scan_project_signals(root: Path, sources: dict[str, str], leads: list[Lead])
             leads.append(Lead("high", "env-not-ignored", ".gitignore", 1, ".env exists but is not git-ignored"))
 
 
+
+SKILL_ASSET_DOCSTRINGS = ('"""Build rich message HTML', '"""MongoDB storage for a Telegram bot', '"""Safe runtime helpers for Telethon')
+HANDLER_DECORATOR = re.compile(r"\.(message|callback_query|edited_message|inline_query|pre_checkout_query|chat_member|my_chat_member)\b")
+STATE_OR_STORAGE = re.compile(r"\bStatesGroup\b|\bimport (sqlite3|aiosqlite|asyncpg|redis)\b|\bfrom (pymongo|motor|asyncpg|redis|sqlalchemy)\b")
+
+
+def scan_structure(sources: dict[str, str], leads: list[Lead]) -> None:
+    """Layout leads for Python bots: handlers nested in a builder, a flat package, oversized modules."""
+    app = {rel: text for rel, text in sources.items() if rel.endswith(".py") and not TEST_PATH.search(rel)}
+    handler_modules = []
+    for rel, text in app.items():
+        lines = text.count("\n") + 1
+        if lines > 300 and not text.lstrip().startswith(SKILL_ASSET_DOCSTRINGS):
+            leads.append(Lead("low", "module-too-long", rel, 1, f"{lines} lines; split by responsibility (handlers, keyboards, texts, services)"))
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+        top_level = 0
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                nested = [n for n in ast.walk(node) if n is not node and isinstance(n, ast.AsyncFunctionDef)
+                          and any(HANDLER_DECORATOR.search(ast.unparse(d)) for d in n.decorator_list)]
+                if len(nested) >= 4:
+                    leads.append(Lead("medium", "handlers-in-builder", rel, node.lineno,
+                                      f"{len(nested)} handlers are defined inside {node.name}(); define them at module level, one feature per module, and register them in build_router()"))
+        for node in tree.body:
+            if isinstance(node, ast.AsyncFunctionDef) and any(HANDLER_DECORATOR.search(ast.unparse(d)) for d in node.decorator_list):
+                top_level += 1
+        if top_level or re.search(r"\bRouter\(|\bDispatcher\(", text):
+            handler_modules.append(rel)
+    if not handler_modules or not STATE_OR_STORAGE.search("\n".join(app.values())):
+        return
+    generic = sorted({rel.split("/")[0] for rel in app if re.match(r"(app|bot|src|main|telegram_bot)/handlers/", rel)})
+    for name in generic:
+        leads.append(Lead("low", "generic-package-name", f"{name}/__init__.py", 1,
+                          f"the package is named '{name}'; name it after the bot in snake_case (notes_bot, shop_bot), see references/backend.md"))
+    has_handlers_package = any(re.search(r"(^|/)handlers/", rel) for rel in app)
+    if not has_handlers_package:
+        anchor = sorted(handler_modules)[0]
+        leads.append(Lead("medium", "flat-layout", anchor, 1,
+                          "a bot with storage or FSM keeps its handlers in a flat module; use the package layout in references/backend.md "
+                          "(handlers/, keyboards/, screens/, services/, database/)"))
+
 def collect(root: Path) -> dict[str, str]:
     sources: dict[str, str] = {}
     for directory, subdirs, files in os.walk(root):
@@ -449,6 +493,7 @@ def audit(root: Path) -> list[Lead]:
         elif Path(rel).suffix in SCRIPT_SUFFIXES:
             leads.extend(scan_script(rel, text))
     scan_project_signals(root, sources, leads)
+    scan_structure(sources, leads)
     leads.extend(credential_leads(root, sources))
     order = {"high": 0, "medium": 1, "low": 2}
     unique = {(lead.rule, lead.path, lead.line): lead for lead in leads}

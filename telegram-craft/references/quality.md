@@ -42,6 +42,8 @@ Include those that apply, not all by default:
 
 ## Test quality
 
+- Test what can break: a branch, a parser, money, permissions, state. One focused test per such piece; trivial code (constants, plain wiring, a text change) needs none beyond the journey tests the gate requires.
+
 - A test must fail when the behavior breaks. Check by temporarily breaking the code on critical paths.
 - Assert exact API calls and arguments, not merely that nothing raised.
 - Use controlled barriers to test races, not sleeps.

@@ -18,47 +18,65 @@ splitbot/
 A product bot (several flows, storage, payments, workers) uses the full layout below. Grow into it when the second flow or the storage arrives; do not create empty packages ahead of need. A single file is acceptable only for a throwaway script the user asked for as one file.
 
 ```
-mybot/                     # project root
-  app/                     # the package (name it after the product)
+notes-bot/                 # project root, named after the bot
+  notes_bot/               # the package: the bot's name in snake_case
     __main__.py            # wiring and startup only: config, clients, routers, run
     config.py              # typed settings from the environment, fail fast
     handlers/              # one module per feature: parse update, call service, render
       start.py
       settings.py
     keyboards/             # keyboard builders and callback_data schemas
-    texts/                 # every user-visible string and screen renderer (texts/en.py)
+    screens/               # every user-visible message: wording and rich layout, one function per screen
     services/              # business rules and authorization, no Telegram types
-    storage/               # database access and migrations
-    workers/               # background jobs (media, broadcasts), if any
+    database/              # database client, indexes, and queries
+    workers/               # background jobs (media, broadcasts), only if any
+    middlewares/           # aiogram middlewares (throttling, injection), only if any
   tools/                   # one-off operator tools, e.g. create_session.py for an MTProto session
-  tests/                   # mirrors app/: test_handlers_*, test_services_*
-  var/                     # runtime data: sessions/, downloads/, db, logs (git-ignored)
+  tests/                   # mirrors the package: test_handlers_*, test_services_*
   .env.example             # every variable with a comment, no real values
-  .gitignore               # .env, var/, *.session, caches
+  .gitignore               # .env, data/, *.session, caches
   requirements.txt         # or pyproject.toml, with pinned framework versions
   README.md                # what it does, setup, BotFather/my.telegram.org steps, run, test
 ```
 
-For grammY or Telegraf, use the same roles under `src/` (`src/handlers`, `src/keyboards`, `src/texts`, `src/services`, `src/storage`).
+Name the package after the bot in lowercase snake_case (`notes_bot`, `shop_bot`, `price_alerts`) and run it with `python -m notes_bot`. Never use a generic name such as `app`, `bot`, `src`, `main`, or `telegram_bot`: `bot` also collides with the `Bot` object every handler receives. A multi-language bot keeps its translated strings in `locales/`, and `screens/` reads from them.
 
-**Hybrid Bot API + MTProto, or a bot plus a user client:** keep each client in its own package and share only services and storage.
+For grammY or Telegraf, use the same roles under `src/` (`src/handlers`, `src/keyboards`, `src/screens`, `src/services`, `src/database`).
+
+**Hybrid Bot API + MTProto, or a bot plus a user client:** keep each client in its own package and share only services and the database.
 
 ```
-app/
-  bot/            # control bot: handlers/, keyboards/, texts/
-  userclient/     # MTProto client: client.py (start, reconnect), listeners/, relay/
+watch_relay/
+  control_bot/    # control bot: handlers/, keyboards/, screens/
+  user_client/    # MTProto client: client.py (start, reconnect), listeners/, relay/
   services/       # shared rules, used by both
-  storage/
+  database/
   __main__.py     # starts both clients under one supervisor
 tools/create_session.py  # one-time sign-in from assets/create_session.py, never run by the service
 ```
 
+Register handlers so they stay testable and the router stays fresh for each dispatcher (aiogram refuses to attach one `Router` to two dispatchers, and tests build several):
+
+```python
+# notes_bot/handlers/notes.py
+async def show_note(callback: CallbackQuery, callback_data: NoteAction, store: NoteStore) -> None:
+    ...
+
+
+def build_router() -> Router:
+    router = Router(name="notes")
+    router.callback_query.register(show_note, NoteAction.filter(F.action == "show"))
+    return router
+```
+
+Handler functions live at module level, one feature per module. `build_router()` only registers them. Never define handlers inside a builder function: that turns a feature into one long closure that cannot be imported or tested alone.
+
 Rules that hold at every size:
 
-- **One responsibility per module.** Text and screen rendering live in `texts/`, buttons in `keyboards/`, update handling in `handlers/`. A module that mixes them gets split.
+- **One responsibility per module.** Message wording and screen rendering live in `screens/`, buttons in `keyboards/`, update handling in `handlers/`. A module that mixes them gets split.
 - **Split a module past about 300 lines.**
 - **Dependencies point inward:** handlers call services; services do not import Telegram types, so business rules are testable without a bot.
-- **Nothing runtime in the code tree.** Sessions, downloads, databases, and logs go under `var/` (or a configured path), never beside source files or in the project root.
+- **No runtime files in the project.** Logs go to stdout, where systemd or Docker collects them. Application data goes to the database, the MTProto session to `TELEGRAM_SESSION_STRING`, media the bot sends again to its `file_id`, and files being processed to `tempfile.TemporaryDirectory()`. Create a `data/` directory only when the bot must keep files on its own disk (downloads it keeps, a SQLite file, a file session): read its path from `DATA_DIR` (default `./data`) and git-ignore it.
 - **Ship the setup files:** `.env.example`, `.gitignore`, a requirements file, and a README with the exact run and test commands.
 - In an existing project, keep its layout; only move code when the user asks for a refactor.
 

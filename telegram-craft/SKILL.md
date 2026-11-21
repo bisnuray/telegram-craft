@@ -3,7 +3,7 @@ name: telegram-craft
 description: "Engineer production-quality Telegram bots, Mini Apps, and MTProto clients: message copy and /start flows, inline keyboards and navigation, handlers, callbacks and FSM state, webhooks, Telegram Stars payments and subscriptions, media and file processing, moderation, and initData auth, in aiogram, python-telegram-bot, grammY, Telegraf, or the raw Bot API, and Telethon or Pyrogram user clients and bot sessions (sessions, FloodWait, large files). Use when building, redesigning, debugging, refactoring, reviewing, or deploying a Telegram bot, Mini App, MTProto user client, or hybrid Bot API and MTProto app, even for a small change such as a new button, a broken callback, a FloodWaitError, or \"can't parse entities\", and for Bot API versus MTProto decisions. Russian: телеграм-бот, мини-апп, инлайн-кнопки, оплата звёздами. Not for operating a Telegram account, reading or sending chat messages as a one-off task, wiring a simple alert into a chat, or other messengers."
 license: MIT
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
   bot-api-snapshot: "10.4"
   verified: "2026-11-15"
 ---
@@ -22,14 +22,14 @@ Match the process to the request. Build what was asked, and list recommended ext
 |---|---|---|
 | Question or one-line fix | Answer or patch. Check the one contract involved. | `platform-facts.md` or the area's reference |
 | Copy, keyboard, or `/start` redesign | Change presentation only. Keep `callback_data`, routes, facts, and locale keys. Add or run the quality gate (`quality-gate.md`). | `messages.md`, `rich-messages.md`, `keyboards.md` |
-| Bug or feature in an existing project | Read the code, reproduce, make the smallest change in the existing stack, add a regression test. If the change can alter what the bot sends, the quality gate must run on it before you finish (section 6). | `existing-projects.md`, `quality-gate.md` |
+| Bug or feature in an existing project | Read the code, reproduce, find every caller of what you touch, fix the root cause once with the smallest change in the existing stack, and add a regression test. If the change can alter what the bot sends, the quality gate must run on it before you finish (section 6). | `existing-projects.md`, `quality-gate.md` |
 | Refactor | Pin behavior with tests first, then move code. No behavior changes. Keep comments that carry context. | `existing-projects.md`, `code-quality.md` |
-| New bot or Mini App | Choose a layout sized to the product, write a screen map, build one working vertical slice, then widen it. Every screen is a rich message. | `code-quality.md`, `backend.md`, `database.md`, `product-journeys.md`, `rich-recipes.md` |
+| New bot or Mini App | Choose a layout sized to the product, write a screen map, build one working vertical slice, then widen it. Every screen is a rich message. Before handoff, run `tg_audit.py` and fix every structure lead (`flat-layout`, `handlers-in-builder`). | `code-quality.md`, `backend.md`, `database.md`, `product-journeys.md`, `rich-recipes.md` |
 | Review or audit | Run `tg_audit.py` and Ruff, confirm each lead by reading code, report by severity. | `quality.md`, `security.md`, `code-quality.md` |
 
 Ask a question only when the answer changes what you build and the code cannot tell you. A missing bot token blocks live testing, not implementation.
 
-Keep the project's stack. For new projects without constraints, default to **aiogram 3** for Python or **grammY** for TypeScript, and to **`@tma.js/sdk`** or the plain `telegram-web-app.js` script for Mini Apps. Size both the infrastructure and the code to the bot: a utility bot is a small package with its logic in its own module; a product bot gets the full layout in `backend.md` (`code-quality.md` has the table). Either way, every responsibility lives in one obvious place: never a flat folder of mixed files, and never empty packages or layers built for later.
+Keep the project's stack. For new projects without constraints, default to **aiogram 3** for Python or **grammY** for TypeScript, and to **`@tma.js/sdk`** or the plain `telegram-web-app.js` script for Mini Apps. Size the infrastructure and the code to the bot (rule 16).
 
 ## 2. Choose the surface
 
@@ -72,12 +72,12 @@ Ordered by cost of getting them wrong.
 **Experience**
 
 13. **Update the current screen instead of stacking new messages,** and give each screen one clear next step and a way out. Expired or invalid actions must recover, not fail silently.
-14. **Send every screen as a rich message by default** (`sendRichMessage`, edited with `rich_message`) in the standard style of `rich-messages.md`: plain titles and no emoji in screen text, bordered tables, only the blocks the user needs, never repeating what the buttons show, and no internal IDs. Follow the recipe for the screen's job in `rich-recipes.md` and build the HTML with `assets/rich_html.py`; keep the keyboard in `reply_markup`. Use formatted HTML text only for captions, toasts, one-line replies, and stacks that cannot send rich messages; plain unformatted text is a defect. Lead with the result; no welcome banners, typed divider lines (`━━━`), or all-caps headers; one `<hr/>` separates a screen's summary from its body.
+14. **Send every screen as a rich message by default** (`sendRichMessage`, edited with `rich_message`), built with `assets/rich_html.py` in the standard style of `rich-messages.md` and the recipe for its job in `rich-recipes.md`: plain titles, no emoji, bordered tables, no internal IDs, and no text that repeats the buttons. Keep the keyboard in `reply_markup`. Formatted HTML text is only for captions, toasts, one-line replies, and stacks without rich messages; plain unformatted text is a defect.
 15. **Mini Apps should feel like Telegram.** Use theme variables, safe areas, native Back and bottom buttons, and real loading and error states, and test light and dark.
 
 **Code**
 
-16. **Write code a careful reviewer would approve** (`code-quality.md`): the smallest design that keeps each responsibility in one place, descriptive names, and the project's existing conventions. No one-implementation abstractions, placeholders, dead code, or commented-out code. Comments say why, never what the next line does; keep existing comments that carry context.
+16. **Write code a careful reviewer would approve** (`code-quality.md`): the smallest design that keeps each responsibility in one place, reusing the project, this skill's assets, and the framework before writing new code (the decision ladder), descriptive names, and the project's existing conventions. No one-implementation abstractions, placeholders, dead code, or commented-out code. Comments say why, never what the next line does; keep existing comments that carry context. A bot with storage, FSM, or more than two screens uses the package layout in `backend.md` (`handlers/`, `keyboards/`, `screens/`, `services/`, `database/`), with handlers at module level, one feature per module.
 17. **Every error and task has an owner.** Catch expected Telegram errors narrowly, and let the rest reach one error boundary that logs the traceback. Never swallow `CancelledError` or return a fake success. Every task, HTTP session, and client is closed on shutdown; every network call has a timeout and every retry a limit.
 18. **MTProto user accounts run from an existing `StringSession`.** Load it from the secret environment with `string_session_from_env()` and `connect_authorized()` (`assets/mtproto_runtime.py`), and exit with a clear error when it is missing or revoked. Never call `start()` or `log_out()` at runtime, never fall back to a session file or a login prompt, and keep the sign-in in `assets/create_session.py`, run by the owner. Bot API bots need none of this.
 19. **Choose storage on purpose** (`database.md`). Keep an existing project's database. For a new project that needs persistent data, use MongoDB with PyMongo's `AsyncMongoClient` by default, and state the choice in one sentence. Use PostgreSQL for money moving between users or strongly relational data, SQLite only when the owner wants local-only storage with no server, and Redis only for temporary state. Never pick SQLite because it needs no setup, because the bot is a single process, or because no database server runs where you work: build for the right database and say which of its tests did not run.
@@ -85,6 +85,13 @@ Ordered by cost of getting them wrong.
 ## 4. Load only what the task needs
 
 Read a reference when its trigger applies, before designing that part. All paths are under `references/`.
+
+Work economically; these habits cut cost without cutting checks:
+- Read each reference you need once, before writing code, in one command. Files over 100 lines open with a contents list: read only the sections you need.
+- Do not read the source of assets or the vendored `tg_quality` harness to learn their APIs. `quality-gate.md`, `rich-messages.md`, and `database.md` list them.
+- Write each file once, completely, then test. Prefer one multi-file step over many small edits.
+- Run tests quietly (`pytest -q`, adding `-x --tb=short` while fixing) and show only the failing part. Run the full gate once, after the last edit.
+- Build only what was asked: no extra features, files, or README sections beyond setup and run steps.
 
 | Read | When the task involves |
 |---|---|
@@ -150,4 +157,4 @@ Mentioning the gate or copying its files is not validation. Skip it for changes 
 
 Never present L1 or L2 as L3. A browser screenshot with `webapp_mock.js` shows layout, not Telegram behavior. Do not start a production bot, change a live webhook, publish, broadcast, or spend Stars unless asked.
 
-End with: what the user can now do; the project tree; files changed; how to run it; BotFather or environment steps the owner must do by hand; what was verified at which level; and what was not verified.
+End briefly, for a busy reader: what works now, how to run it, the steps the owner must do by hand (BotFather, environment), and what was verified at which level. Close with one or two lines on what you skipped or did not verify and any risk. List changed files only when editing an existing project; do not print the project tree or restate the code.

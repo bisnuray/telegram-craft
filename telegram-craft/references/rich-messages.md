@@ -16,7 +16,7 @@ Every screen looks like a clean, well-organized document: a plain title, one sta
 
 ## Build screens with the helper
 
-Copy `assets/rich_html.py` into the project's text layer (for example `app/texts/rich.py`) and build every screen with it. It escapes all plain strings, makes tables bordered, and checks the limits (32,768 characters, 500 blocks, 16 levels, 20 columns). Keep one function per screen in `texts/`; handlers pick the screen and the keyboard.
+Copy `assets/rich_html.py` into the project's text layer (for example `notes_bot/screens/rich.py`) and build every screen with it. It escapes all plain strings, makes tables bordered, and checks the limits (32,768 characters, 500 blocks, 16 levels, 20 columns). Keep one function per screen in `screens/`; handlers pick the screen and the keyboard.
 
 ```python
 def home(state) -> Html:
@@ -28,6 +28,14 @@ def home(state) -> Html:
         section("Sources", bullets(state.source_titles) if state.source_titles else para(i("None yet"))),
     )
 ```
+
+Every helper returns escaped `Html`; plain strings passed in are escaped for you. Do not read the module to learn it:
+
+| Kind | Helpers |
+|---|---|
+| Inline | `b`, `i`, `u`, `s`, `code`, `mark`, `spoiler`, `sub`, `sup`, `link(url, *parts)`, `time(unix, fmt="", fallback="")`, `esc`, `join(*parts, sep="")` |
+| Blocks | `title(text, level=3)`, `heading(text, level=4)`, `para`, `status(state, *context)`, `facts([(label, value)], caption=None)`, `table(headers, rows, align=None)`, `bullets`, `numbered(items, start=1)`, `checklist([(item, done)])`, `section(name, *blocks)`, `details(summary, *blocks, open=False)`, `note(*parts, expandable=False)`, `quote(text, cite=None)`, `pull`, `pre(source, language=None)`, `footer`, `divider()` |
+| Screen | `screen(*blocks)` joins the blocks and raises on a broken limit; `check(html)` returns the problems as a list |
 
 Show only data the product really has. Never invent counts or times to fill a table. If a useful fact is cheap to track, propose it in the handoff.
 

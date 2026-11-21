@@ -278,3 +278,63 @@ class TestStringSessionConfiguration:
         assert not any("LOG_LEVEL" in p for p in problems)
         assert any(p.startswith(".env [env-file-tracked]") for p in problems)
         assert not any(p.startswith(".env.example") for p in problems)
+
+
+NESTED = '''from aiogram import F, Router
+from pymongo import AsyncMongoClient
+
+
+def build_router() -> Router:
+    router = Router()
+
+    @router.message(F.text == "a")
+    async def a(message): ...
+
+    @router.message(F.text == "b")
+    async def b(message): ...
+
+    @router.callback_query(F.data == "c")
+    async def c(callback): ...
+
+    @router.callback_query(F.data == "d")
+    async def d(callback): ...
+
+    return router
+'''
+
+MODULE_LEVEL = '''from aiogram import F, Router
+
+
+async def show(callback): ...
+
+
+async def edit(callback): ...
+
+
+def build_router() -> Router:
+    router = Router(name="notes")
+    router.callback_query.register(show, F.data == "show")
+    router.callback_query.register(edit, F.data == "edit")
+    return router
+'''
+
+
+class TestStructureLeads:
+    def rules(self, tmp_path, files):
+        return {rule for rule, _ in audit(tmp_path, files)} & {"flat-layout", "handlers-in-builder", "module-too-long"}
+
+    def test_flat_bot_with_storage_and_nested_handlers_is_flagged(self, tmp_path):
+        assert self.rules(tmp_path, {"bot/handlers.py": NESTED, "bot/big.py": "x = 1\n" * 320}) == {
+            "flat-layout", "handlers-in-builder", "module-too-long"}
+
+    def test_package_layout_with_module_level_handlers_is_clean(self, tmp_path):
+        files = {"notes_bot/handlers/notes.py": MODULE_LEVEL, "notes_bot/database/mongo.py": "from pymongo import AsyncMongoClient\n",
+                 "notes_bot/__main__.py": "from aiogram import Dispatcher\ndp = Dispatcher()\n"}
+        assert self.rules(tmp_path, files) == set()
+
+    def test_tiny_bot_without_storage_may_stay_flat(self, tmp_path):
+        assert self.rules(tmp_path, {"bot.py": "from aiogram import Dispatcher\ndp = Dispatcher()\n"}) == set()
+
+    def test_generic_package_name_is_flagged(self, tmp_path):
+        files = {"app/handlers/notes.py": MODULE_LEVEL, "app/database/mongo.py": "from pymongo import AsyncMongoClient\n"}
+        assert "generic-package-name" in {rule for rule, _ in audit(tmp_path, files)}

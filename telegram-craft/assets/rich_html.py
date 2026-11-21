@@ -1,6 +1,6 @@
 """Build rich message HTML (Bot API 10.1+) for bot screens, escaped by construction.
 
-Copy into the project (for example ``app/texts/rich.py``) and build every screen from these helpers,
+Copy into the project (for example ``notes_bot/screens/rich.py``) and build every screen from these helpers,
 so every screen has the same standard look: a plain title, a status line, bordered tables, no emoji.
 
     from app.texts.rich import *
