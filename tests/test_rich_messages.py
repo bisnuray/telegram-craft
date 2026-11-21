@@ -73,8 +73,35 @@ def rich_codes(html):
 
 
 def test_builder_self_test_passes():
-    result = subprocess.run([sys.executable, str(SKILL / "assets/rich_html.py"), "--self-test"], capture_output=True, text=True)
-    assert result.returncode == 0, result.stdout + result.stderr
+    h = rich_html
+    screen, title, status, facts, table, bullets = h.screen, h.title, h.status, h.facts, h.table, h.bullets
+    details, para, footer, b, time, check, RICH_LIMIT = h.details, h.para, h.footer, h.b, h.time, h.check, h.RICH_LIMIT
+    evil = '<b>x</b><tg-button type="callback_data" data="v1:admin">Pwn</tg-button> & "q"'
+    out = screen(title(evil), status(evil, evil), facts([(evil, evil)]),
+                 table(["Name", "N"], [[evil, 1]], align=["left", "right"]), bullets([evil]),
+                 details(evil, para(evil)), footer(evil))
+    assert "<tg-button" not in out and "&lt;tg-button" in out, "user text must be escaped"
+    assert "<b>x</b>" not in out, "user tags must not survive"
+    assert '<td align="right">1</td>' in out
+    assert b("A & B") == "<b>A &amp; B</b>" and b(b("x")) == "<b><b>x</b></b>"
+    assert status("Paused", None, "2 sources") == "<p><b>Paused</b> · 2 sources</p>"
+    assert table(["a"], [[1]]).startswith("<table bordered>")
+    assert facts([("a", 1)]).startswith("<table bordered compact>")
+    assert "<td></td>" not in table(["a", "b"], [["x", None]]) and "<td>—</td>" in table(["a", "b"], [["x", ""]])
+    assert '<td colspan="2"><b>Total</b></td><td align="right"><b>450</b></td>' in table(
+        ["Item", "Qty", "Price"], [["A", 1, 450]], align=["left", "right", "right"], total=["Total", None, 450])
+    assert 'format="r"' in time(1, "r") and 'format="wDT"' in time(1, "wDT")
+    for bad in ("x", "rt", "Dd"):
+        try:
+            time(1, bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"format {bad!r} should be rejected")
+    assert check("<p><b>x</p>"), "unbalanced markup must be reported"
+    assert check("<p>" + "x" * RICH_LIMIT + "</p>"), "length limit must be reported"
+    assert check(bullets(range(600))), "block limit must be reported"
+    assert not check(out)
 
 
 def test_builder_escapes_user_text_and_builds_a_standard_screen():
