@@ -328,8 +328,8 @@ class TestStructureLeads:
             "flat-layout", "handlers-in-builder", "module-too-long"}
 
     def test_package_layout_with_module_level_handlers_is_clean(self, tmp_path):
-        files = {"notes_bot/handlers/notes.py": MODULE_LEVEL, "notes_bot/database/mongo.py": "from pymongo import AsyncMongoClient\n",
-                 "notes_bot/__main__.py": "from aiogram import Dispatcher\ndp = Dispatcher()\n"}
+        files = {"notes/handlers/notes.py": MODULE_LEVEL, "notes/database/mongo.py": "from pymongo import AsyncMongoClient\n",
+                 "notes/__main__.py": "from aiogram import Dispatcher\ndp = Dispatcher()\n"}
         assert self.rules(tmp_path, files) == set()
 
     def test_tiny_bot_without_storage_may_stay_flat(self, tmp_path):

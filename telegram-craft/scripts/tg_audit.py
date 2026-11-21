@@ -449,7 +449,7 @@ def scan_structure(sources: dict[str, str], leads: list[Lead]) -> None:
     generic = sorted({rel.split("/")[0] for rel in app if re.match(r"(app|bot|src|main|telegram_bot)/handlers/", rel)})
     for name in generic:
         leads.append(Lead("low", "generic-package-name", f"{name}/__init__.py", 1,
-                          f"the package is named '{name}'; name it after the bot in snake_case (notes_bot, shop_bot), see references/backend.md"))
+                          f"the package is named '{name}'; name it after the bot in snake_case (notes, shop_bot), see references/backend.md"))
     has_handlers_package = any(re.search(r"(^|/)handlers/", rel) for rel in app)
     if not has_handlers_package:
         anchor = sorted(handler_modules)[0]

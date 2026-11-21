@@ -16,7 +16,7 @@ Every screen looks like a clean, well-organized document: a plain title, one sta
 
 ## Build screens with the helper
 
-Copy `assets/rich_html.py` into the project's text layer (for example `notes_bot/screens/rich.py`) and build every screen with it. It escapes all plain strings, makes tables bordered, and checks the limits (32,768 characters, 500 blocks, 16 levels, 20 columns). Keep one function per screen in `screens/`; handlers pick the screen and the keyboard.
+Copy `assets/rich_html.py` into the project's text layer (for example `notes/screens/rich.py`) and build every screen with it. It escapes all plain strings, makes tables bordered, and checks the limits (32,768 characters, 500 blocks, 16 levels, 20 columns). Keep one function per screen in `screens/`; handlers pick the screen and the keyboard.
 
 ```python
 def home(state) -> Html:

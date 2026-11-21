@@ -19,7 +19,7 @@ A product bot (several flows, storage, payments, workers) uses the full layout b
 
 ```
 notes-bot/                 # project root, named after the bot
-  notes_bot/               # the package: the bot's name in snake_case
+  notes/                   # the package: the bot's name in snake_case
     __main__.py            # wiring and startup only: config, clients, routers, run
     config.py              # typed settings from the environment, fail fast
     handlers/              # one module per feature: parse update, call service, render
@@ -39,7 +39,7 @@ notes-bot/                 # project root, named after the bot
   README.md                # what it does, setup, BotFather/my.telegram.org steps, run, test
 ```
 
-Name the package after the bot in lowercase snake_case (`notes_bot`, `shop_bot`, `price_alerts`) and run it with `python -m notes_bot`. Never use a generic name such as `app`, `bot`, `src`, `main`, or `telegram_bot`: `bot` also collides with the `Bot` object every handler receives. A multi-language bot keeps its translated strings in `locales/`, and `screens/` reads from them.
+Name the package after the bot in lowercase snake_case (`notes`, `shop`, `price_alerts`, `file_manager`) and run it with `python -m notes`. Drop a `_bot` suffix: the whole project is the bot, so it adds nothing. Never use a generic name such as `app`, `bot`, `src`, `main`, or `telegram_bot`: `bot` also collides with the `Bot` object every handler receives. A multi-language bot keeps its translated strings in `locales/`, and `screens/` reads from them.
 
 For grammY or Telegraf, use the same roles under `src/` (`src/handlers`, `src/keyboards`, `src/screens`, `src/services`, `src/database`).
 
@@ -58,7 +58,7 @@ tools/create_session.py  # one-time sign-in from assets/create_session.py, never
 Register handlers so they stay testable and the router stays fresh for each dispatcher (aiogram refuses to attach one `Router` to two dispatchers, and tests build several):
 
 ```python
-# notes_bot/handlers/notes.py
+# notes/handlers/notes.py
 async def show_note(callback: CallbackQuery, callback_data: NoteAction, store: NoteStore) -> None:
     ...
 
